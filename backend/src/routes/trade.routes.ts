@@ -4,9 +4,17 @@ import {
   getTradeController,
   getExporterTradeIdsController,
   getExporterReputationController,
+  recordTradeController,
 } from "../controllers/trade.controller.js";
 
 const router = Router();
+
+// ============================================================
+// RECORD TRADE
+// POST /api/trades
+// ============================================================
+
+router.post("/trades", recordTradeController);
 
 // ============================================================
 // GET ONE TRADE

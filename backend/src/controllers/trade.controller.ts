@@ -3,7 +3,51 @@ import {
   getTrade,
   getExporterTradeIds,
   getExporterReputation,
+  recordTrade,
 } from "../services/tradeLedger.service.js";
+import type { RecordTradeRequest } from "../types/trade.types.js";
+
+// ============================================================
+// RECORD TRADE
+// POST /api/trades
+// ============================================================
+
+export async function recordTradeController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const input = req.body as RecordTradeRequest;
+
+    const result = await recordTrade(input);
+
+    res.status(201).json({
+      success: true,
+      message: "Trade recorded successfully",
+      data: result,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+
+    const validationErrorMessages = [
+      "is required",
+      "must be a non-negative number",
+      "Invalid date",
+      "Invalid date format",
+    ];
+
+    const isValidationError = validationErrorMessages.some((text) =>
+      message.includes(text),
+    );
+
+    console.error("Error recording trade:", error);
+
+    res.status(isValidationError ? 400 : 500).json({
+      success: false,
+      message,
+    });
+  }
+}
 
 // ============================================================
 // GET ONE TRADE

@@ -1,36 +1,17 @@
+import "dotenv/config";
 import { ethers } from "ethers";
 
-import { provider, tradeLedgerAddress } from "../config/blockchain.config.js";
-
-// ============================================================
-// TRADE LEDGER ABI
-// ============================================================
-//
-// We only include the contract functions that our backend
-// currently needs.
-//
-// Later we can add recordTrade(), events, etc.
-// ============================================================
-
-const TRADE_LEDGER_ABI = [
-  // ----------------------------------------------------------
-  // GET ONE TRADE
-  // ----------------------------------------------------------
-
-  "function getTrade(string transactionId) view returns (tuple(string transactionId, string exporterId, string importerId, string product, uint256 quantity, string tradeStatus, string inspectionStatus, string disputeStatus, string settlementStatus, uint256 expectedDelivery, uint256 actualDelivery, string invoiceHash, uint256 trustScoreAfterTrade, uint256 timestamp))",
-
-  // ----------------------------------------------------------
-  // GET EXPORTER TRADE IDS
-  // ----------------------------------------------------------
-
-  "function getExporterTradeIds(string exporterId) view returns (string[])",
-
-  // ----------------------------------------------------------
-  // GET EXPORTER REPUTATION
-  // ----------------------------------------------------------
-
-  "function getExporterReputation(string exporterId) view returns (uint256 successfulTrades, uint256 disputedTrades, uint256 failedTrades, uint256 cancelledTrades, uint256 onTimeDeliveryRate, uint256 qualityPassRate, uint256 disputeRate, uint256 currentTrustScore, uint256 totalTrades)",
-];
+import {
+  privateKey,
+  provider,
+  TRADE_LEDGER_ABI,
+  tradeLedgerAddress,
+} from "../config/blockchain.config.js";
+import type {
+  ExporterReputation,
+  Trade,
+  RecordTradeRequest,
+} from "../types/trade.types.js";
 
 // ============================================================
 // CONTRACT INSTANCE
@@ -43,31 +24,134 @@ const tradeLedgerContract = new ethers.Contract(
 );
 
 // ============================================================
-// TYPES
+// WRITE CONTRACT
 // ============================================================
 
-export interface Trade {
-  transactionId: string;
+const signer = new ethers.Wallet(privateKey, provider);
 
-  exporterId: string;
-  importerId: string;
+const tradeLedgerWriteContract = new ethers.Contract(
+  tradeLedgerAddress,
+  TRADE_LEDGER_ABI,
+  signer,
+);
 
-  product: string;
-  quantity: bigint;
+// ============================================================
+// DATE → UNIX TIMESTAMP
+// ============================================================
 
-  tradeStatus: string;
-  inspectionStatus: string;
-  disputeStatus: string;
-  settlementStatus: string;
+function dateToUnixTimestamp(date: string): bigint {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error(`Invalid date format: ${date}. Expected YYYY-MM-DD`);
+  }
 
-  expectedDelivery: bigint;
-  actualDelivery: bigint;
+  const timestamp = Math.floor(
+    new Date(`${date}T00:00:00.000Z`).getTime() / 1000,
+  );
 
-  invoiceHash: string;
+  if (!Number.isFinite(timestamp)) {
+    throw new Error(`Invalid date: ${date}`);
+  }
 
-  trustScoreAfterTrade: bigint;
+  return BigInt(timestamp);
+}
 
-  timestamp: bigint;
+// ============================================================
+// RECORD TRADE
+// ============================================================
+
+export async function recordTrade(input: RecordTradeRequest): Promise<{
+  transactionHash: string;
+  blockNumber: number;
+}> {
+  // ----------------------------------------------------------
+  // VALIDATE REQUIRED STRING FIELDS
+  // ----------------------------------------------------------
+
+  const requiredStrings: Array<[string, string]> = [
+    ["transactionId", input.transactionId],
+    ["exporterId", input.exporterId],
+    ["importerId", input.importerId],
+    ["product", input.product],
+    ["tradeStatus", input.tradeStatus],
+    ["inspectionStatus", input.inspectionStatus],
+    ["disputeStatus", input.disputeStatus],
+    ["settlementStatus", input.settlementStatus],
+    ["invoiceHash", input.invoiceHash],
+  ];
+
+  for (const [field, value] of requiredStrings) {
+    if (typeof value !== "string" || value.trim().length === 0) {
+      throw new Error(`${field} is required`);
+    }
+  }
+
+  // ----------------------------------------------------------
+  // VALIDATE QUANTITY
+  // ----------------------------------------------------------
+
+  if (!Number.isFinite(input.quantity) || input.quantity < 0) {
+    throw new Error("quantity must be a non-negative number");
+  }
+
+  // ----------------------------------------------------------
+  // VALIDATE TRUST SCORE
+  // ----------------------------------------------------------
+
+  if (
+    !Number.isFinite(input.trustScoreAfterTrade) ||
+    input.trustScoreAfterTrade < 0
+  ) {
+    throw new Error("trustScoreAfterTrade must be a non-negative number");
+  }
+
+  // ----------------------------------------------------------
+  // CONVERT DATES TO UNIX TIMESTAMPS
+  // ----------------------------------------------------------
+
+  const expectedDelivery = dateToUnixTimestamp(input.expectedDelivery);
+
+  const actualDelivery = dateToUnixTimestamp(input.actualDelivery);
+
+  // ----------------------------------------------------------
+  // CALL SMART CONTRACT
+  // ----------------------------------------------------------
+
+  const tx = await tradeLedgerWriteContract.getFunction("recordTrade")(
+    [
+      input.transactionId,
+      input.exporterId,
+      input.importerId,
+      input.product,
+      BigInt(input.quantity),
+      input.tradeStatus,
+      input.inspectionStatus,
+      input.disputeStatus,
+      input.settlementStatus,
+      expectedDelivery,
+      actualDelivery,
+      input.invoiceHash,
+    ],
+    BigInt(input.trustScoreAfterTrade),
+  );
+
+  // ----------------------------------------------------------
+  // WAIT FOR BLOCKCHAIN CONFIRMATION
+  // ----------------------------------------------------------
+
+  const receipt = await tx.wait();
+
+  if (!receipt) {
+    throw new Error("Transaction was not mined");
+  }
+
+  // ----------------------------------------------------------
+  // RETURN BLOCKCHAIN TRANSACTION DETAILS
+  // ----------------------------------------------------------
+
+  return {
+    transactionHash: receipt.hash,
+    blockNumber: receipt.blockNumber,
+  };
 }
 
 // ============================================================
@@ -126,26 +210,6 @@ export async function getExporterTradeIds(
 // ============================================================
 // GET EXPORTER REPUTATION
 // ============================================================
-
-export interface ExporterReputation {
-  successfulTrades: bigint;
-
-  disputedTrades: bigint;
-
-  failedTrades: bigint;
-
-  cancelledTrades: bigint;
-
-  onTimeDeliveryRate: bigint;
-
-  qualityPassRate: bigint;
-
-  disputeRate: bigint;
-
-  currentTrustScore: bigint;
-
-  totalTrades: bigint;
-}
 
 export async function getExporterReputation(
   exporterId: string,
