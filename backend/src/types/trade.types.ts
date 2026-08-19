@@ -75,6 +75,7 @@ export interface RecordTradeRequest {
   expectedDelivery: string;
   actualDelivery: string;
 
+  file: Buffer;
   invoiceHash: string;
 
   trustScoreAfterTrade: number;

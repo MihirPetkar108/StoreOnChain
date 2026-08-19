@@ -89,7 +89,7 @@ export async function recordTrade(input: RecordTradeRequest): Promise<{
   // VALIDATE QUANTITY
   // ----------------------------------------------------------
 
-  if (!Number.isFinite(input.quantity) || input.quantity < 0) {
+  if (!Number.isFinite(Number(input.quantity)) || Number(input.quantity) < 0) {
     throw new Error("quantity must be a non-negative number");
   }
 
@@ -98,8 +98,8 @@ export async function recordTrade(input: RecordTradeRequest): Promise<{
   // ----------------------------------------------------------
 
   if (
-    !Number.isFinite(input.trustScoreAfterTrade) ||
-    input.trustScoreAfterTrade < 0
+    !Number.isFinite(Number(input.trustScoreAfterTrade)) ||
+    Number(input.trustScoreAfterTrade) < 0
   ) {
     throw new Error("trustScoreAfterTrade must be a non-negative number");
   }

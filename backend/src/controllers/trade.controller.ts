@@ -6,6 +6,7 @@ import {
   recordTrade,
 } from "../services/tradeLedger.service.js";
 import type { RecordTradeRequest } from "../types/trade.types.js";
+import axios from "axios";
 
 // ============================================================
 // RECORD TRADE
@@ -18,6 +19,37 @@ export async function recordTradeController(
 ): Promise<void> {
   try {
     const input = req.body as RecordTradeRequest;
+
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        message: "Invoice file is required",
+      });
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // Convert the uploaded file into FormData
+    // --------------------------------------------------------
+
+    const formData = new FormData();
+    const fileBytes = new Uint8Array(req.file.buffer.length);
+    fileBytes.set(req.file.buffer);
+
+    const fileBlob = new Blob([fileBytes], {
+      type: req.file?.mimetype,
+    });
+
+    formData.append("invoice", fileBlob, req.file?.originalname);
+
+    const { data } = await axios.post(
+      `http://localhost:3000/api/invoice/process`,
+      formData,
+    );
+
+    input.invoiceHash = data.invoiceHash;
+    console.log("Invoice Hash:", input.invoiceHash);
 
     const result = await recordTrade(input);
 

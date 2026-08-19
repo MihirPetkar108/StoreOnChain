@@ -6,6 +6,7 @@ import {
   getExporterReputationController,
   recordTradeController,
 } from "../controllers/trade.controller.js";
+import { upload } from "../utilities/storage.js";
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const router = Router();
 // POST /api/trades
 // ============================================================
 
-router.post("/trades", recordTradeController);
+router.post("/trades", upload.single("invoice"), recordTradeController);
 
 // ============================================================
 // GET ONE TRADE
