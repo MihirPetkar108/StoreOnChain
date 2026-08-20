@@ -1,0 +1,79 @@
+export interface Trade {
+  transactionId: string;
+  exporterId: string;
+  importerId: string;
+  product: string;
+  quantity: string;
+  tradeStatus: string;
+  inspectionStatus: string;
+  disputeStatus: string;
+  settlementStatus: string;
+  expectedDelivery: string;
+  actualDelivery: string;
+  invoiceHash: string;
+  trustScoreAfterTrade: string;
+  timestamp: string;
+}
+
+export interface ExporterReputation {
+  successfulTrades: string;
+  disputedTrades: string;
+  failedTrades: string;
+  cancelledTrades: string;
+  onTimeDeliveryRate: string;
+  qualityPassRate: string;
+  disputeRate: string;
+  currentTrustScore: string;
+  totalTrades: string;
+}
+
+export interface ProcessInvoiceResponse {
+  success: boolean;
+  invoiceHash?: string;
+  message?: string;
+}
+
+export interface VerifyInvoiceResponse {
+  success: boolean;
+  verified?: boolean;
+  message?: string;
+}
+
+export interface RecordTradePayload {
+  transactionId: string;
+  exporterId: string;
+  importerId: string;
+  product: string;
+  quantity: number;
+  tradeStatus: string;
+  inspectionStatus: string;
+  disputeStatus: string;
+  settlementStatus: string;
+  expectedDelivery: string;
+  actualDelivery: string;
+  trustScoreAfterTrade: number;
+  invoiceFile: File;
+}
+
+export interface TradesByStatusResponse {
+  success: boolean;
+  status?: string;
+  totalTrades?: number;
+  trades?: Trade[];
+  message?: string;
+}
+
+export interface ExporterTradesResponse {
+  success: boolean;
+  exporterId?: string;
+  tradeIds?: string[];
+  totalTrades?: number;
+  message?: string;
+}
+
+export interface ExporterReputationResponse {
+  success: boolean;
+  exporterId?: string;
+  reputation?: ExporterReputation;
+  message?: string;
+}
