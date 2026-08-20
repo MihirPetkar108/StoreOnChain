@@ -36,9 +36,6 @@ export async function uploadInvoice(
 
   const extensionMap: Record<string, string> = {
     "application/pdf": "pdf",
-    "image/png": "png",
-    "image/jpeg": "jpg",
-    "image/jpg": "jpg",
   };
 
   const extension = extensionMap[mimeType];
@@ -61,10 +58,13 @@ export async function uploadInvoice(
     .from(INVOICE_BUCKET)
     .upload(filePath, fileBuffer, {
       contentType: mimeType,
-      upsert: true,
+      upsert: false,
     });
 
   if (error) {
+    if (error.message.toLowerCase().includes("already exists")) {
+      throw new Error("Invoice already exists");
+    }
     throw new Error(`Failed to upload invoice: ${error.message}`);
   }
 
@@ -78,7 +78,7 @@ export async function uploadInvoice(
 // ============================================================
 
 export async function getInvoice(invoiceHash: string): Promise<Buffer> {
-  const extensions = ["pdf", "png", "jpg"];
+  const extensions = ["pdf"];
 
   for (const extension of extensions) {
     const filePath = `${invoiceHash}.${extension}`;
@@ -105,7 +105,7 @@ export async function getInvoiceUrl(
   invoiceHash: string,
   expiresInSeconds = 3600,
 ): Promise<string> {
-  const extensions = ["pdf", "png", "jpg"];
+  const extensions = ["pdf"];
 
   for (const extension of extensions) {
     const filePath = `${invoiceHash}.${extension}`;
@@ -120,4 +120,16 @@ export async function getInvoiceUrl(
   }
 
   throw new Error("Invoice file not found");
+}
+
+export async function deleteInvoice(invoiceHash: string) {
+  const filePath = `${invoiceHash}.pdf`;
+
+  const { error } = await supabase.storage
+    .from(INVOICE_BUCKET)
+    .remove([filePath]);
+  if (error) {
+    throw new Error(`Failed to delete invoice: ${error.message}`);
+  }
+  console.log(`Invoice file deleted successfully`);
 }

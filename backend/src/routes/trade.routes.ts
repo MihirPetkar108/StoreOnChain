@@ -4,9 +4,11 @@ import {
   getTradeController,
   getExporterTradeIdsController,
   getExporterReputationController,
+  getTradesByStatusController,
   recordTradeController,
+  getExporterTradeIdsByStatusController,
 } from "../controllers/trade.controller.js";
-import { upload } from "../utilities/storage.js";
+import { uploadSingle } from "../utilities/storage.js";
 
 const router = Router();
 
@@ -15,7 +17,14 @@ const router = Router();
 // POST /api/trades
 // ============================================================
 
-router.post("/trades", upload.single("invoice"), recordTradeController);
+router.post("/trades", uploadSingle("invoice"), recordTradeController);
+
+// ============================================================
+// GET TRADES BY STATUS
+// GET /api/trades?status=<status>
+// ============================================================
+
+router.get("/trades", getTradesByStatusController);
 
 // ============================================================
 // GET ONE TRADE
@@ -30,6 +39,16 @@ router.get("/trades/:transactionId", getTradeController);
 // ============================================================
 
 router.get("/exporters/:exporterId/trades", getExporterTradeIdsController);
+
+// ============================================================
+// GET EXPORTER REPUTATION
+// GET /api/exporters/:exporterId?status=<status>
+// ============================================================
+
+router.get(
+  "/exporters/:exporterId/trades",
+  getExporterTradeIdsByStatusController,
+);
 
 // ============================================================
 // GET EXPORTER REPUTATION

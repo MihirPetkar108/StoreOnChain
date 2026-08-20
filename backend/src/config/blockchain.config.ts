@@ -51,6 +51,18 @@ export const TRADE_LEDGER_ABI = [
   // ----------------------------------------------------------
 
   "function recordTrade((string transactionId,string exporterId,string importerId,string product,uint256 quantity,string tradeStatus,string inspectionStatus,string disputeStatus,string settlementStatus,uint256 expectedDelivery,uint256 actualDelivery,string invoiceHash) input,uint256 trustScoreAfterTrade)",
+
+  // ----------------------------------------------------------
+  // GET TRADES BY STATUS
+  // ----------------------------------------------------------
+
+  "function getTradesByStatus(string status) view returns (tuple(string transactionId, string exporterId, string importerId, string product, uint256 quantity, string tradeStatus, string inspectionStatus, string disputeStatus, string settlementStatus, uint256 expectedDelivery, uint256 actualDelivery, string invoiceHash, uint256 trustScoreAfterTrade, uint256 timestamp)[])",
+
+  // ----------------------------------------------------------
+  // GET ALL TRADE IDS
+  // ----------------------------------------------------------
+
+  "function getAllTradeIds() view returns (string[])",
 ];
 
 export const provider = new ethers.JsonRpcProvider(rpcUrl);

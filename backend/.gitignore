@@ -1,3 +1,9 @@
 node_modules/
 dist/
 .env
+
+./src/services/invoice.service.ts
+./src/services/normalization.service.ts
+./src/services/ocr.service.ts
+
+./src/tests/ocr.service.test.ts

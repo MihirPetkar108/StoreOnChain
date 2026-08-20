@@ -15,8 +15,10 @@
   "type": "module",
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
+    "@types/cors": "^2.8.19",
     "@types/multer": "^2.2.0",
     "axios": "^1.19.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
     "express": "^5.2.1",

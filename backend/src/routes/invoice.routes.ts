@@ -1,6 +1,10 @@
 import { Router } from "express";
-import { processInvoiceController } from "../controllers/invoice.controller.js";
-import { upload } from "../utilities/storage.js";
+import {
+  getInvoiceController,
+  processInvoiceController,
+  verifyInvoiceController,
+} from "../controllers/invoice.controller.js";
+import { uploadSingle } from "../utilities/storage.js";
 
 const router = Router();
 
@@ -16,8 +20,12 @@ const router = Router();
 
 router.post(
   "/invoice/process",
-  upload.single("invoice"),
+  uploadSingle("invoice"),
   processInvoiceController,
 );
+
+router.get("/invoice/verify", uploadSingle("verify"), verifyInvoiceController);
+
+router.get("/invoice/document", getInvoiceController);
 
 export default router;

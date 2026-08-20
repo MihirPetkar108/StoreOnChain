@@ -1,13 +1,42 @@
 import "dotenv/config";
 import express from "express";
+import cors from "cors";
+
 import tradeRoutes from "./routes/trade.routes.js";
 import invoiceRoutes from "./routes/invoice.routes.js";
 
 const app = express();
 
+app.use(cors());
+
 app.use(express.json());
 app.use("/api", tradeRoutes);
 app.use("/api", invoiceRoutes);
+
+// Global Error Handler Middleware
+app.use(
+  (
+    err: any,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    if (err) {
+      console.error("Express Error:", err.message || err);
+      const message = err.message || "An unexpected error occurred";
+      const isClientError =
+        message.includes("not supported") ||
+        message.includes("allowed") ||
+        err.name === "MulterError";
+
+      res.status(isClientError ? 400 : 500).json({
+        success: false,
+        message,
+      });
+      return;
+    }
+  },
+);
 
 const PORT = process.env.PORT || 3000;
 

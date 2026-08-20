@@ -63,97 +63,111 @@ export async function recordTrade(input: RecordTradeRequest): Promise<{
   transactionHash: string;
   blockNumber: number;
 }> {
-  // ----------------------------------------------------------
-  // VALIDATE REQUIRED STRING FIELDS
-  // ----------------------------------------------------------
+  try {
+    // ----------------------------------------------------------
+    // VALIDATE REQUIRED STRING FIELDS
+    // ----------------------------------------------------------
 
-  const requiredStrings: Array<[string, string]> = [
-    ["transactionId", input.transactionId],
-    ["exporterId", input.exporterId],
-    ["importerId", input.importerId],
-    ["product", input.product],
-    ["tradeStatus", input.tradeStatus],
-    ["inspectionStatus", input.inspectionStatus],
-    ["disputeStatus", input.disputeStatus],
-    ["settlementStatus", input.settlementStatus],
-    ["invoiceHash", input.invoiceHash],
-  ];
+    const requiredStrings: Array<[string, string]> = [
+      ["transactionId", input.transactionId],
+      ["exporterId", input.exporterId],
+      ["importerId", input.importerId],
+      ["product", input.product],
+      ["tradeStatus", input.tradeStatus],
+      ["inspectionStatus", input.inspectionStatus],
+      ["disputeStatus", input.disputeStatus],
+      ["settlementStatus", input.settlementStatus],
+      ["invoiceHash", input.invoiceHash],
+    ];
 
-  for (const [field, value] of requiredStrings) {
-    if (typeof value !== "string" || value.trim().length === 0) {
-      throw new Error(`${field} is required`);
+    for (const [field, value] of requiredStrings) {
+      if (typeof value !== "string" || value.trim().length === 0) {
+        throw new Error(`${field} is required`);
+      }
     }
+
+    // ----------------------------------------------------------
+    // VALIDATE QUANTITY
+    // ----------------------------------------------------------
+
+    if (
+      !Number.isFinite(Number(input.quantity)) ||
+      Number(input.quantity) < 0
+    ) {
+      throw new Error("quantity must be a non-negative number");
+    }
+
+    // ----------------------------------------------------------
+    // VALIDATE TRUST SCORE
+    // ----------------------------------------------------------
+
+    if (
+      !Number.isFinite(Number(input.trustScoreAfterTrade)) ||
+      Number(input.trustScoreAfterTrade) < 0
+    ) {
+      throw new Error("trustScoreAfterTrade must be a non-negative number");
+    }
+
+    // ----------------------------------------------------------
+    // CONVERT DATES TO UNIX TIMESTAMPS
+    // ----------------------------------------------------------
+
+    const expectedDelivery = dateToUnixTimestamp(input.expectedDelivery);
+
+    const actualDelivery = dateToUnixTimestamp(input.actualDelivery);
+
+    // ----------------------------------------------------------
+    // CALL SMART CONTRACT
+    // ----------------------------------------------------------
+
+    const tx = await tradeLedgerWriteContract.getFunction("recordTrade")(
+      [
+        input.transactionId,
+        input.exporterId,
+        input.importerId,
+        input.product,
+        BigInt(input.quantity),
+        input.tradeStatus,
+        input.inspectionStatus,
+        input.disputeStatus,
+        input.settlementStatus,
+        expectedDelivery,
+        actualDelivery,
+        input.invoiceHash,
+      ],
+      BigInt(input.trustScoreAfterTrade),
+    );
+
+    // ----------------------------------------------------------
+    // WAIT FOR BLOCKCHAIN CONFIRMATION
+    // ----------------------------------------------------------
+
+    const receipt = await tx.wait();
+
+    if (!receipt) {
+      throw new Error("Transaction was not mined");
+    }
+
+    // ----------------------------------------------------------
+    // RETURN BLOCKCHAIN TRANSACTION DETAILS
+    // ----------------------------------------------------------
+
+    return {
+      transactionHash: receipt.hash,
+      blockNumber: receipt.blockNumber,
+    };
+  } catch (error) {
+    console.error("Error recording trade:", error);
+    const message =
+      error instanceof Error ? error.message : "Trade already exists";
+
+    if (message.includes("Trade already exists")) {
+      throw new Error("Trade already exists");
+    }
+
+    throw new Error("Failed to record trade");
   }
-
-  // ----------------------------------------------------------
-  // VALIDATE QUANTITY
-  // ----------------------------------------------------------
-
-  if (!Number.isFinite(Number(input.quantity)) || Number(input.quantity) < 0) {
-    throw new Error("quantity must be a non-negative number");
-  }
-
-  // ----------------------------------------------------------
-  // VALIDATE TRUST SCORE
-  // ----------------------------------------------------------
-
-  if (
-    !Number.isFinite(Number(input.trustScoreAfterTrade)) ||
-    Number(input.trustScoreAfterTrade) < 0
-  ) {
-    throw new Error("trustScoreAfterTrade must be a non-negative number");
-  }
-
-  // ----------------------------------------------------------
-  // CONVERT DATES TO UNIX TIMESTAMPS
-  // ----------------------------------------------------------
-
-  const expectedDelivery = dateToUnixTimestamp(input.expectedDelivery);
-
-  const actualDelivery = dateToUnixTimestamp(input.actualDelivery);
-
-  // ----------------------------------------------------------
-  // CALL SMART CONTRACT
-  // ----------------------------------------------------------
-
-  const tx = await tradeLedgerWriteContract.getFunction("recordTrade")(
-    [
-      input.transactionId,
-      input.exporterId,
-      input.importerId,
-      input.product,
-      BigInt(input.quantity),
-      input.tradeStatus,
-      input.inspectionStatus,
-      input.disputeStatus,
-      input.settlementStatus,
-      expectedDelivery,
-      actualDelivery,
-      input.invoiceHash,
-    ],
-    BigInt(input.trustScoreAfterTrade),
-  );
-
-  // ----------------------------------------------------------
-  // WAIT FOR BLOCKCHAIN CONFIRMATION
-  // ----------------------------------------------------------
-
-  const receipt = await tx.wait();
-
-  if (!receipt) {
-    throw new Error("Transaction was not mined");
-  }
-
-  // ----------------------------------------------------------
-  // RETURN BLOCKCHAIN TRANSACTION DETAILS
-  // ----------------------------------------------------------
-
-  return {
-    transactionHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-  };
 }
-
 // ============================================================
 // GET ONE TRADE
 // ============================================================
@@ -164,31 +178,18 @@ export async function getTrade(transactionId: string): Promise<Trade> {
 
   return {
     transactionId: trade.transactionId,
-
     exporterId: trade.exporterId,
-
     importerId: trade.importerId,
-
     product: trade.product,
-
     quantity: BigInt(trade.quantity.toString()),
-
     tradeStatus: trade.tradeStatus,
-
     inspectionStatus: trade.inspectionStatus,
-
     disputeStatus: trade.disputeStatus,
-
     settlementStatus: trade.settlementStatus,
-
     expectedDelivery: BigInt(trade.expectedDelivery.toString()),
-
     actualDelivery: BigInt(trade.actualDelivery.toString()),
-
     invoiceHash: trade.invoiceHash,
-
     trustScoreAfterTrade: BigInt(trade.trustScoreAfterTrade.toString()),
-
     timestamp: BigInt(trade.timestamp.toString()),
   };
 }
@@ -220,21 +221,66 @@ export async function getExporterReputation(
 
   return {
     successfulTrades: BigInt(reputation.successfulTrades.toString()),
-
     disputedTrades: BigInt(reputation.disputedTrades.toString()),
-
     failedTrades: BigInt(reputation.failedTrades.toString()),
-
     cancelledTrades: BigInt(reputation.cancelledTrades.toString()),
-
     onTimeDeliveryRate: BigInt(reputation.onTimeDeliveryRate.toString()),
-
     qualityPassRate: BigInt(reputation.qualityPassRate.toString()),
-
     disputeRate: BigInt(reputation.disputeRate.toString()),
-
     currentTrustScore: BigInt(reputation.currentTrustScore.toString()),
-
     totalTrades: BigInt(reputation.totalTrades.toString()),
   };
+}
+
+export async function getAllTrades(): Promise<Trade[]> {
+  try {
+    const tradeIds: string[] = await tradeLedgerContract.getFunction("getAllTradeIds")();
+    const trades = await Promise.all(
+      tradeIds.map(async (id: string) => {
+        return await getTrade(id);
+      })
+    );
+    return trades;
+  } catch (error) {
+    console.error("Error fetching all trades:", error);
+    throw new Error("Failed to fetch all trades");
+  }
+}
+
+export async function getTradesByStatus(status: string): Promise<Trade[]> {
+  try {
+    if (!status || status.toUpperCase() === "ALL") {
+      return await getAllTrades();
+    }
+
+    const trades =
+      await tradeLedgerContract.getFunction("getTradesByStatus")(status);
+
+    return trades.map((trade: any) => ({
+      transactionId: trade.transactionId,
+      exporterId: trade.exporterId,
+      importerId: trade.importerId,
+      product: trade.product,
+      quantity: BigInt(trade.quantity.toString()),
+      tradeStatus: trade.tradeStatus,
+      inspectionStatus: trade.inspectionStatus,
+      disputeStatus: trade.disputeStatus,
+      settlementStatus: trade.settlementStatus,
+      expectedDelivery: BigInt(trade.expectedDelivery.toString()),
+      actualDelivery: BigInt(trade.actualDelivery.toString()),
+      invoiceHash: trade.invoiceHash,
+      trustScoreAfterTrade: BigInt(trade.trustScoreAfterTrade.toString()),
+      timestamp: BigInt(trade.timestamp.toString()),
+    }));
+  } catch (error) {
+    console.error("Error fetching trades by status:", error);
+    const message =
+      error instanceof Error ? error.message : "Trade already exists";
+
+    if (message.includes("Trade already exists")) {
+      throw new Error("Trade already exists");
+    }
+
+    throw new Error("Failed to fetch trades by status");
+  }
 }
