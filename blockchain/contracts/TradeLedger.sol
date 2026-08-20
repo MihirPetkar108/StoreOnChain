@@ -43,7 +43,7 @@ contract TradeLedger {
     // ============================================================
 
     struct ReputationStats {
-        uint256 successfulTrades;
+        uint256 completedTrades;
         uint256 disputedTrades;
         uint256 failedTrades;
         uint256 cancelledTrades;
@@ -77,6 +77,9 @@ contract TradeLedger {
     // "TX10291" => Trade(...)
     mapping(string => Trade) private trades;
 
+    // List of all transaction IDs
+    string[] private allTradeIds;
+
 
     // exporterId => list of transaction IDs
     //
@@ -84,6 +87,8 @@ contract TradeLedger {
     // "EX-9281" => ["TX001", "TX003", "TX005"]
     mapping(string => string[]) private exporterTradeIds;
 
+    // tradeStatus => list of transaction IDs
+    mapping(string => string[]) private tradesByStatus;
 
     // exporterId => ReputationStats
     //
@@ -197,7 +202,7 @@ struct TradeInput {
     // --------------------------------------------------------
 
     trades[input.transactionId] = newTrade;
-
+    allTradeIds.push(input.transactionId);
 
     // --------------------------------------------------------
     // Associate trade with exporter
@@ -205,6 +210,8 @@ struct TradeInput {
 
     exporterTradeIds[input.exporterId].push(input.transactionId);
 
+    // Associate trade with its current status
+    tradesByStatus[input.tradeStatus].push(input.transactionId);
 
     // --------------------------------------------------------
     // Update exporter reputation
@@ -224,10 +231,10 @@ struct TradeInput {
 
     if (
         keccak256(bytes(input.tradeStatus))
-            == keccak256(bytes("SUCCESSFUL"))
+            == keccak256(bytes("COMPLETED"))
     ) {
 
-        stats.successfulTrades += 1;
+        stats.completedTrades += 1;
 
     } else if (
         keccak256(bytes(input.tradeStatus))
@@ -356,6 +363,27 @@ struct TradeInput {
         return exporterTradeIds[exporterId];
     }
 
+    // ============================================================
+    // GET TRADES BY STATUS
+    // ============================================================
+
+    function getTradesByStatus(
+        string memory status
+    )
+        public
+        view
+        returns (Trade[] memory)
+    {
+        string[] memory transactionIds = tradesByStatus[status];
+
+        Trade[] memory result = new Trade[](transactionIds.length);
+
+        for (uint256 i = 0; i < transactionIds.length; i++) {
+            result[i] = trades[transactionIds[i]];
+        }
+
+        return result;
+    }
 
     // ============================================================
     // GET EXPORTER REPUTATION
@@ -367,7 +395,7 @@ struct TradeInput {
         public
         view
         returns (
-            uint256 successfulTrades,
+            uint256 completedTrades,
             uint256 disputedTrades,
             uint256 failedTrades,
             uint256 cancelledTrades,
@@ -470,7 +498,7 @@ struct TradeInput {
 
 
         return (
-            stats.successfulTrades,
+            stats.completedTrades,
             stats.disputedTrades,
             stats.failedTrades,
             stats.cancelledTrades,
@@ -481,4 +509,16 @@ struct TradeInput {
             stats.totalTrades
         );
     }
+
+// ============================================================
+// GET ALL TRADE IDS
+// ============================================================
+
+function getAllTradeIds()
+    public
+    view
+    returns (string[] memory)
+{
+    return allTradeIds;
+}
 }
