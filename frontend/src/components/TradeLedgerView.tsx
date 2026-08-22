@@ -37,9 +37,6 @@ export const TradeLedgerView: React.FC = () => {
 
   const statuses = [
     "ALL",
-    "CREATED",
-    "IN_TRANSIT",
-    "DELIVERED",
     "INSPECTED",
     "DISPUTED",
     "COMPLETED",
@@ -100,7 +97,6 @@ export const TradeLedgerView: React.FC = () => {
       case "FAILED":
       case "CANCELLED":
         return "bg-rose-500/10 text-rose-400 border-rose-500/30";
-      case "IN_TRANSIT":
       case "INSPECTED":
         return "bg-cyan-500/10 text-cyan-400 border-cyan-500/30";
       default:

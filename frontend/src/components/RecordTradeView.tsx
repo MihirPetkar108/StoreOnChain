@@ -14,12 +14,14 @@ import {
 
 export const RecordTradeView: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
-  const [transactionId, setTransactionId] = useState(`TX-${Date.now().toString().slice(-6)}`);
+  const [transactionId, setTransactionId] = useState(
+    `TX-${Date.now().toString().slice(-6)}`,
+  );
   const [exporterId, setExporterId] = useState("EXP-9001");
   const [importerId, setImporterId] = useState("IMP-4002");
   const [product, setProduct] = useState("Industrial Silicon Wafers 300mm");
   const [quantity, setQuantity] = useState<number>(5000);
-  const [tradeStatus, setTradeStatus] = useState("CREATED");
+  const [tradeStatus, setTradeStatus] = useState("COMPLETED");
   const [inspectionStatus, setInspectionStatus] = useState("PENDING");
   const [disputeStatus, setDisputeStatus] = useState("NONE");
   const [settlementStatus, setSettlementStatus] = useState("PENDING");
@@ -41,7 +43,7 @@ export const RecordTradeView: React.FC = () => {
     setImporterId(`IMP-${Math.floor(1000 + Math.random() * 9000)}`);
     setProduct("High-Grade Copper Cathodes (99.99%)");
     setQuantity(250);
-    setTradeStatus("IN_TRANSIT");
+    setTradeStatus("COMPLETED");
     setInspectionStatus("PASSED");
     setDisputeStatus("NONE");
     setSettlementStatus("PENDING");
@@ -53,9 +55,9 @@ export const RecordTradeView: React.FC = () => {
     if (!file) {
       const sampleBlob = new Blob(
         [
-          `INVOICE SUMMARY\nTransaction ID: TX-${randomId}\nAmount: $450,000 USD\nItem: Copper Cathodes\nDate: 2026-08-20\nStoreOnChain Verified.`
+          `INVOICE SUMMARY\nTransaction ID: TX-${randomId}\nAmount: $450,000 USD\nItem: Copper Cathodes\nDate: 2026-08-20\nStoreOnChain Verified.`,
         ],
-        { type: "text/plain" }
+        { type: "text/plain" },
       );
       const dummyFile = new File([sampleBlob], `invoice-tx-${randomId}.txt`, {
         type: "text/plain",
@@ -136,10 +138,13 @@ export const RecordTradeView: React.FC = () => {
         <div>
           <div className="flex items-center space-x-2">
             <Boxes className="w-6 h-6 text-indigo-400" />
-            <h1 className="text-xl font-bold text-white">Record Trade On-Chain</h1>
+            <h1 className="text-xl font-bold text-white">
+              Record Trade On-Chain
+            </h1>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Endpoint: <code className="text-indigo-300">POST /api/trades</code> — Upload invoice file and persist trade metadata.
+            Endpoint: <code className="text-indigo-300">POST /api/trades</code>{" "}
+            — Upload invoice file and persist trade metadata.
           </p>
         </div>
         <button
@@ -153,7 +158,10 @@ export const RecordTradeView: React.FC = () => {
       </div>
 
       {/* Main Form */}
-      <form onSubmit={handleSubmit} className="glass-card rounded-2xl p-6 sm:p-8 space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="glass-card rounded-2xl p-6 sm:p-8 space-y-6"
+      >
         {/* Invoice File Upload Dropzone */}
         <div>
           <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
@@ -172,7 +180,9 @@ export const RecordTradeView: React.FC = () => {
               {file ? (
                 <div className="flex items-center space-x-2 text-sm text-emerald-400 font-medium">
                   <FileText className="w-4 h-4" />
-                  <span>Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                  <span>
+                    Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                  </span>
                 </div>
               ) : (
                 <>
@@ -189,7 +199,9 @@ export const RecordTradeView: React.FC = () => {
         {/* Trade Details Input Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Transaction ID</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Transaction ID
+            </label>
             <input
               type="text"
               required
@@ -200,7 +212,9 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Exporter ID</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Exporter ID
+            </label>
             <input
               type="text"
               required
@@ -211,7 +225,9 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Importer ID</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Importer ID
+            </label>
             <input
               type="text"
               required
@@ -222,7 +238,9 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-xs font-medium text-slate-400 mb-1">Product Description</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Product Description
+            </label>
             <input
               type="text"
               required
@@ -233,7 +251,9 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Quantity</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Quantity
+            </label>
             <input
               type="number"
               required
@@ -245,24 +265,25 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Trade Status</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Trade Status
+            </label>
             <select
               value={tradeStatus}
               onChange={(e) => setTradeStatus(e.target.value)}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
             >
-              <option value="CREATED">CREATED</option>
-              <option value="IN_TRANSIT">IN_TRANSIT</option>
-              <option value="DELIVERED">DELIVERED</option>
-              <option value="INSPECTED">INSPECTED</option>
-              <option value="DISPUTED">DISPUTED</option>
               <option value="COMPLETED">COMPLETED</option>
               <option value="CANCELLED">CANCELLED</option>
+              <option value="DISPUTED">DISPUTED</option>
+              <option value="INSPECTED">INSPECTED</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Inspection Status</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Inspection Status
+            </label>
             <select
               value={inspectionStatus}
               onChange={(e) => setInspectionStatus(e.target.value)}
@@ -275,7 +296,9 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Dispute Status</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Dispute Status
+            </label>
             <select
               value={disputeStatus}
               onChange={(e) => setDisputeStatus(e.target.value)}
@@ -288,7 +311,9 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Settlement Status</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Settlement Status
+            </label>
             <select
               value={settlementStatus}
               onChange={(e) => setSettlementStatus(e.target.value)}
@@ -301,7 +326,9 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Expected Delivery</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Expected Delivery
+            </label>
             <input
               type="date"
               required
@@ -312,7 +339,9 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Actual Delivery</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Actual Delivery
+            </label>
             <input
               type="date"
               required
@@ -323,7 +352,9 @@ export const RecordTradeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Trust Score After Trade (0-100)</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Trust Score After Trade (0-100)
+            </label>
             <input
               type="number"
               required
@@ -380,17 +411,39 @@ export const RecordTradeView: React.FC = () => {
           {successResult.trade && (
             <div className="bg-slate-950/80 rounded-xl p-4 border border-slate-800 text-xs font-mono space-y-2 text-slate-300">
               <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-slate-500">Transaction ID:</span> <span className="text-slate-100 font-semibold">{successResult.trade.transactionId}</span></div>
-                <div><span className="text-slate-500">Exporter ID:</span> <span className="text-slate-100 font-semibold">{successResult.trade.exporterId}</span></div>
-                <div><span className="text-slate-500">Importer ID:</span> <span className="text-slate-100 font-semibold">{successResult.trade.importerId}</span></div>
-                <div><span className="text-slate-500">Status:</span> <span className="text-emerald-400 font-semibold">{successResult.trade.tradeStatus}</span></div>
+                <div>
+                  <span className="text-slate-500">Transaction ID:</span>{" "}
+                  <span className="text-slate-100 font-semibold">
+                    {successResult.trade.transactionId}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Exporter ID:</span>{" "}
+                  <span className="text-slate-100 font-semibold">
+                    {successResult.trade.exporterId}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Importer ID:</span>{" "}
+                  <span className="text-slate-100 font-semibold">
+                    {successResult.trade.importerId}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Status:</span>{" "}
+                  <span className="text-emerald-400 font-semibold">
+                    {successResult.trade.tradeStatus}
+                  </span>
+                </div>
               </div>
               <div className="pt-2 border-t border-slate-800 text-indigo-300 truncate">
-                <span className="text-slate-500">Invoice Hash:</span> {successResult.trade.invoiceHash}
+                <span className="text-slate-500">Invoice Hash:</span>{" "}
+                {successResult.trade.invoiceHash}
               </div>
               {(successResult.trade as any).transactionHash && (
                 <div className="text-emerald-400 truncate">
-                  <span className="text-slate-500">Blockchain Tx:</span> {(successResult.trade as any).transactionHash}
+                  <span className="text-slate-500">Blockchain Tx:</span>{" "}
+                  {(successResult.trade as any).transactionHash}
                 </div>
               )}
             </div>
