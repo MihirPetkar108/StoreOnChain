@@ -138,7 +138,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {healthMessage ||
                 (backendConnected
                   ? "Backend engine is connected and ready to process requests."
-                  : "Could not connect to backend server at http://localhost:3000.")}
+                  : "Could not connect to the configured backend server.")}
             </p>
           </div>
         </div>
