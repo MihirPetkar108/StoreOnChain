@@ -34,21 +34,18 @@ router.get("/trades", getTradesByStatusController);
 router.get("/trades/:transactionId", getTradeController);
 
 // ============================================================
-// GET EXPORTER REPUTATION
-// GET /api/exporters/:exporterId?status=<status>
-// ============================================================
-
-router.get(
-  "/exporters/:exporterId/trades",
-  getExporterTradeIdsByStatusController,
-);
-
-// ============================================================
-// GET EXPORTER TRADE HISTORY
+// GET EXPORTER TRADES
 // GET /api/exporters/:exporterId/trades
+// GET /api/exporters/:exporterId/trades?status=<status>
 // ============================================================
 
-router.get("/exporters/:exporterId/trades", getExporterTradeIdsController);
+router.get("/exporters/:exporterId/trades", (req, res) => {
+  if (typeof req.query.status === "string" && req.query.status.trim()) {
+    return getExporterTradeIdsByStatusController(req, res);
+  }
+
+  return getExporterTradeIdsController(req, res);
+});
 
 // ============================================================
 // GET EXPORTER REPUTATION

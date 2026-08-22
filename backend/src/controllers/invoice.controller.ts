@@ -70,7 +70,7 @@ export async function verifyInvoiceController(
     // Check invoice file and transaction ID
     // --------------------------------------------------------
 
-    const { transactionId } = req.body as { transactionId: string };
+    const { transactionId } = (req.body ?? {}) as { transactionId?: string };
 
     if (!transactionId || !req.file) {
       res.status(400).json({
