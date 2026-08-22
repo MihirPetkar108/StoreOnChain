@@ -177,9 +177,9 @@ export const ExporterReputationView: React.FC = () => {
             </div>
 
             <div className="glass-card p-4 rounded-xl border border-slate-800 bg-slate-900/40">
-              <span className="text-xs text-slate-400">Failed Trades</span>
-              <span className="text-xl font-bold text-rose-400 block mt-1">
-                {reputation.failedTrades}
+              <span className="text-xs text-slate-400">Inspected Trades</span>
+              <span className="text-xl font-bold text-cyan-400 block mt-1">
+                {reputation.inspectedTrades}
               </span>
             </div>
 

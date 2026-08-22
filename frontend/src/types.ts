@@ -18,8 +18,8 @@ export interface Trade {
 export interface ExporterReputation {
   successfulTrades: string;
   disputedTrades: string;
-  failedTrades: string;
   cancelledTrades: string;
+  inspectedTrades: string;
   onTimeDeliveryRate: string;
   qualityPassRate: string;
   disputeRate: string;
