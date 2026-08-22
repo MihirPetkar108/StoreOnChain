@@ -17,9 +17,39 @@ export const ExporterReputationView: React.FC = () => {
   const [reputation, setReputation] = useState<ExporterReputation | null>(null);
   const [exporterTradeIds, setExporterTradeIds] = useState<string[]>([]);
   const [totalTrades, setTotalTrades] = useState<number>(0);
+  const [selectedTradeStatus, setSelectedTradeStatus] = useState("ALL");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchExporterTrades = async (status?: string) => {
+    const tradesRes = await api.getExporterTrades(exporterId.trim(), status);
+
+    if (!tradesRes.success) {
+      throw new Error(tradesRes.message || "Failed to load exporter trades.");
+    }
+
+    const tradeIds = status
+      ? (tradesRes.trades || []).map((trade) => trade.transactionId)
+      : tradesRes.tradeIds || [];
+
+    setExporterTradeIds(tradeIds);
+    setTotalTrades(tradesRes.totalTrades || 0);
+    setSelectedTradeStatus(status || "ALL");
+  };
+
+  const handleTradeStatusClick = async (status: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await fetchExporterTrades(status);
+    } catch (err: any) {
+      setError(err.message || "Error fetching exporter trades.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFetchReputation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,12 +69,7 @@ export const ExporterReputationView: React.FC = () => {
         setError(repRes.message || "Failed to load exporter reputation.");
       }
 
-      // Fetch exporter trade history IDs
-      const tradesRes = await api.getExporterTrades(exporterId.trim());
-      if (tradesRes.success) {
-        setExporterTradeIds(tradesRes.tradeIds || []);
-        setTotalTrades(tradesRes.totalTrades || 0);
-      }
+      await fetchExporterTrades();
     } catch (err: any) {
       setError(err.message || "Error fetching exporter metrics.");
     } finally {
@@ -63,11 +88,21 @@ export const ExporterReputationView: React.FC = () => {
               <span>Exporter Reputation & Trust Ledger</span>
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Endpoints: <code className="text-pink-300">GET /api/exporters/:exporterId/reputation</code> & <code className="text-pink-300">GET /api/exporters/:exporterId/trades</code>
+              Endpoints:{" "}
+              <code className="text-pink-300">
+                GET /api/exporters/:exporterId/reputation
+              </code>{" "}
+              &{" "}
+              <code className="text-pink-300">
+                GET /api/exporters/:exporterId/trades
+              </code>
             </p>
           </div>
 
-          <form onSubmit={handleFetchReputation} className="flex items-center space-x-2">
+          <form
+            onSubmit={handleFetchReputation}
+            className="flex items-center space-x-2"
+          >
             <div className="relative">
               <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
@@ -84,7 +119,11 @@ export const ExporterReputationView: React.FC = () => {
               disabled={loading}
               className="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-xl text-xs font-semibold transition disabled:opacity-50"
             >
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Fetch Reputation"}
+              {loading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                "Fetch Reputation"
+              )}
             </button>
           </form>
         </div>
@@ -107,13 +146,22 @@ export const ExporterReputationView: React.FC = () => {
                 <ShieldCheck className="w-4 h-4 text-pink-400" />
                 <span>Exporter Scorecard</span>
               </div>
-              <h2 className="text-2xl font-extrabold text-white">Exporter ID: {exporterId}</h2>
-              <p className="text-xs text-slate-400">Total Recorded Trades On-Chain: <span className="text-white font-semibold">{reputation.totalTrades}</span></p>
+              <h2 className="text-2xl font-extrabold text-white">
+                Exporter ID: {exporterId}
+              </h2>
+              <p className="text-xs text-slate-400">
+                Total Recorded Trades On-Chain:{" "}
+                <span className="text-white font-semibold">
+                  {reputation.totalTrades}
+                </span>
+              </p>
             </div>
 
             {/* Trust Gauge Badge */}
             <div className="flex flex-col items-center justify-center p-6 bg-slate-950/80 rounded-2xl border border-slate-800 min-w-44 glow-indigo">
-              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Current Trust Score</span>
+              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                Current Trust Score
+              </span>
               <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-indigo-400 mt-1">
                 {reputation.currentTrustScore}
                 <span className="text-lg text-slate-500 font-normal">/100</span>
@@ -125,7 +173,9 @@ export const ExporterReputationView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="glass-card p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-xs text-slate-400 block font-medium">On-Time Delivery Rate</span>
+                <span className="text-xs text-slate-400 block font-medium">
+                  On-Time Delivery Rate
+                </span>
                 <span className="text-2xl font-bold text-emerald-400 mt-1 block">
                   {(Number(reputation.onTimeDeliveryRate) / 100).toFixed(2)}%
                 </span>
@@ -137,7 +187,9 @@ export const ExporterReputationView: React.FC = () => {
 
             <div className="glass-card p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-xs text-slate-400 block font-medium">Quality Pass Rate</span>
+                <span className="text-xs text-slate-400 block font-medium">
+                  Quality Pass Rate
+                </span>
                 <span className="text-2xl font-bold text-cyan-400 mt-1 block">
                   {(Number(reputation.qualityPassRate) / 100).toFixed(2)}%
                 </span>
@@ -149,7 +201,9 @@ export const ExporterReputationView: React.FC = () => {
 
             <div className="glass-card p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-xs text-slate-400 block font-medium">Dispute Rate</span>
+                <span className="text-xs text-slate-400 block font-medium">
+                  Dispute Rate
+                </span>
                 <span className="text-2xl font-bold text-amber-400 mt-1 block">
                   {(Number(reputation.disputeRate) / 100).toFixed(2)}%
                 </span>
@@ -162,44 +216,69 @@ export const ExporterReputationView: React.FC = () => {
 
           {/* Trade Status Breakdown Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="glass-card p-4 rounded-xl border border-slate-800 bg-slate-900/40">
+            <button
+              type="button"
+              onClick={() => handleTradeStatusClick("COMPLETED")}
+              className="glass-card p-4 rounded-xl border border-slate-800 bg-slate-900/40 text-left hover:border-emerald-500/50 transition"
+            >
               <span className="text-xs text-slate-400">Successful Trades</span>
               <span className="text-xl font-bold text-emerald-400 block mt-1">
                 {reputation.successfulTrades}
               </span>
-            </div>
+            </button>
 
-            <div className="glass-card p-4 rounded-xl border border-slate-800 bg-slate-900/40">
+            <button
+              type="button"
+              onClick={() => handleTradeStatusClick("DISPUTED")}
+              className="glass-card p-4 rounded-xl border border-slate-800 bg-slate-900/40 text-left hover:border-amber-500/50 transition"
+            >
               <span className="text-xs text-slate-400">Disputed Trades</span>
               <span className="text-xl font-bold text-amber-400 block mt-1">
                 {reputation.disputedTrades}
               </span>
-            </div>
+            </button>
 
-            <div className="glass-card p-4 rounded-xl border border-slate-800 bg-slate-900/40">
+            <button
+              type="button"
+              onClick={() => handleTradeStatusClick("INSPECTED")}
+              className="glass-card p-4 rounded-xl border border-slate-800 bg-slate-900/40 text-left hover:border-cyan-500/50 transition"
+            >
               <span className="text-xs text-slate-400">Inspected Trades</span>
               <span className="text-xl font-bold text-cyan-400 block mt-1">
                 {reputation.inspectedTrades}
               </span>
-            </div>
+            </button>
 
-            <div className="glass-card p-4 rounded-xl border border-slate-800 bg-slate-900/40">
+            <button
+              type="button"
+              onClick={() => handleTradeStatusClick("CANCELLED")}
+              className="glass-card p-4 rounded-xl border border-slate-800 bg-slate-900/40 text-left hover:border-slate-500/50 transition"
+            >
               <span className="text-xs text-slate-400">Cancelled Trades</span>
               <span className="text-xl font-bold text-slate-400 block mt-1">
                 {reputation.cancelledTrades}
               </span>
-            </div>
+            </button>
           </div>
 
           {/* Associated Trade IDs */}
           <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-3">
             <h3 className="text-sm font-bold text-white flex items-center justify-between">
-              <span>Associated Trade IDs for Exporter ({totalTrades})</span>
-              <span className="text-xs text-slate-400 font-normal">Registered on ledger</span>
+              <span>
+                {selectedTradeStatus === "ALL"
+                  ? "Associated Trade IDs"
+                  : `${selectedTradeStatus} Trade IDs`}{" "}
+                for Exporter ({totalTrades})
+              </span>
+              <span className="text-xs text-slate-400 font-normal">
+                Registered on ledger
+              </span>
             </h3>
 
             {exporterTradeIds.length === 0 ? (
-              <p className="text-xs text-slate-500">No trade IDs listed for this exporter.</p>
+              <p className="text-xs text-slate-500">
+                No trade IDs listed for this exporter.
+              </p>
             ) : (
               <div className="flex flex-wrap gap-2 pt-2">
                 {exporterTradeIds.map((id) => (

@@ -67,6 +67,7 @@ export interface ExporterTradesResponse {
   success: boolean;
   exporterId?: string;
   tradeIds?: string[];
+  trades?: Trade[];
   totalTrades?: number;
   message?: string;
 }
