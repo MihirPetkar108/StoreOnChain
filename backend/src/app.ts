@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 
+import healthRoutes from "./routes/health.routes.js";
 import tradeRoutes from "./routes/trade.routes.js";
 import invoiceRoutes from "./routes/invoice.routes.js";
 
@@ -10,6 +11,7 @@ const app = express();
 app.use(cors());
 
 app.use(express.json());
+app.use("/api", healthRoutes);
 app.use("/api", tradeRoutes);
 app.use("/api", invoiceRoutes);
 
