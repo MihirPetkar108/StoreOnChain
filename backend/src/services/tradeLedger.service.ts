@@ -220,9 +220,7 @@ export async function getExporterReputation(
   )(exporterId);
 
   const tradeIds = await getExporterTradeIds(exporterId);
-  const trades = await Promise.all(
-    tradeIds.map((id: string) => getTrade(id)),
-  );
+  const trades = await Promise.all(tradeIds.map((id: string) => getTrade(id)));
   const disputedTrades = trades.filter(
     (trade) =>
       trade.tradeStatus.trim().toUpperCase() === "DISPUTED" ||
@@ -230,7 +228,11 @@ export async function getExporterReputation(
   ).length;
   const inspectedTrades = trades.filter((trade) => {
     const inspectionStatus = trade.inspectionStatus.trim().toUpperCase();
-    return inspectionStatus === "PASSED" || inspectionStatus === "FAILED";
+    return (
+      trade.tradeStatus.trim().toUpperCase() === "INSPECTED" ||
+      inspectionStatus === "PASSED" ||
+      inspectionStatus === "FAILED"
+    );
   }).length;
   const disputeRate = tradeIds.length
     ? Math.floor((disputedTrades * 10000) / tradeIds.length)
