@@ -5,6 +5,7 @@ import {
   getExporterReputation,
   recordTrade,
   getTradesByStatus,
+  getTradesForExporterByStatus,
 } from "../services/tradeLedger.service.js";
 import type { RecordTradeRequest } from "../types/trade.types.js";
 import axios from "axios";
@@ -361,19 +362,14 @@ export async function getExporterTradeIdsByStatusController(
       return;
     }
 
-    const trades = await getTradesByStatus(status);
-
-    // Filter trades by exporterId
-    const filteredTrades = trades.filter(
-      (trade) => trade.exporterId === exporterId,
-    );
+    const trades = await getTradesForExporterByStatus(exporterId, status);
 
     res.status(200).json({
       success: true,
       exporterId,
       status,
-      totalTrades: filteredTrades.length,
-      trades: filteredTrades.map((trade) => ({
+      totalTrades: trades.length,
+      trades: trades.map((trade) => ({
         transactionId: trade.transactionId,
         exporterId: trade.exporterId,
         importerId: trade.importerId,

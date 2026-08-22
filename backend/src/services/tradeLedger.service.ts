@@ -234,11 +234,12 @@ export async function getExporterReputation(
 
 export async function getAllTrades(): Promise<Trade[]> {
   try {
-    const tradeIds: string[] = await tradeLedgerContract.getFunction("getAllTradeIds")();
+    const tradeIds: string[] =
+      await tradeLedgerContract.getFunction("getAllTradeIds")();
     const trades = await Promise.all(
       tradeIds.map(async (id: string) => {
         return await getTrade(id);
-      })
+      }),
     );
     return trades;
   } catch (error) {
@@ -282,5 +283,42 @@ export async function getTradesByStatus(status: string): Promise<Trade[]> {
     }
 
     throw new Error("Failed to fetch trades by status");
+  }
+}
+
+// ============================================================
+// GET EXPORTER TRADES BY STATUS
+// ============================================================
+
+export async function getTradesForExporterByStatus(
+  exporterId: string,
+  status: string,
+): Promise<Trade[]> {
+  try {
+    // Get all trade IDs belonging to the exporter
+    const tradeIds = await getExporterTradeIds(exporterId);
+
+    // Fetch all trades
+    const trades = await Promise.all(
+      tradeIds.map(async (id: string) => {
+        return await getTrade(id);
+      }),
+    );
+
+    // If no status or ALL → return all exporter trades
+    if (!status || status.toUpperCase() === "ALL") {
+      return trades;
+    }
+
+    // Normalize status for comparison
+    const normalizedStatus = status.trim().toUpperCase();
+
+    // Filter trades by status
+    return trades.filter(
+      (trade) => trade.tradeStatus.trim().toUpperCase() === normalizedStatus,
+    );
+  } catch (error) {
+    console.error("Error fetching exporter trades by status:", error);
+    throw new Error("Failed to fetch exporter trades by status");
   }
 }

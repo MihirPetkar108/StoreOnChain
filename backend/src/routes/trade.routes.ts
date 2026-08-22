@@ -34,13 +34,6 @@ router.get("/trades", getTradesByStatusController);
 router.get("/trades/:transactionId", getTradeController);
 
 // ============================================================
-// GET EXPORTER TRADE HISTORY
-// GET /api/exporters/:exporterId/trades
-// ============================================================
-
-router.get("/exporters/:exporterId/trades", getExporterTradeIdsController);
-
-// ============================================================
 // GET EXPORTER REPUTATION
 // GET /api/exporters/:exporterId?status=<status>
 // ============================================================
@@ -49,6 +42,13 @@ router.get(
   "/exporters/:exporterId/trades",
   getExporterTradeIdsByStatusController,
 );
+
+// ============================================================
+// GET EXPORTER TRADE HISTORY
+// GET /api/exporters/:exporterId/trades
+// ============================================================
+
+router.get("/exporters/:exporterId/trades", getExporterTradeIdsController);
 
 // ============================================================
 // GET EXPORTER REPUTATION
