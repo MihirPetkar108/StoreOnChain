@@ -234,6 +234,16 @@ export async function getExporterReputation(
       inspectionStatus === "FAILED"
     );
   }).length;
+  const passedInspections = trades.filter(
+    (trade) => trade.inspectionStatus.trim().toUpperCase() === "PASSED",
+  ).length;
+  const failedInspections = trades.filter(
+    (trade) => trade.inspectionStatus.trim().toUpperCase() === "FAILED",
+  ).length;
+  const evaluatedInspections = passedInspections + failedInspections;
+  const qualityPassRate = evaluatedInspections
+    ? Math.floor((passedInspections * 10000) / evaluatedInspections)
+    : 0;
   const disputeRate = tradeIds.length
     ? Math.floor((disputedTrades * 10000) / tradeIds.length)
     : 0;
@@ -245,7 +255,7 @@ export async function getExporterReputation(
     cancelledTrades: BigInt(reputation.cancelledTrades.toString()),
     inspectedTrades: BigInt(inspectedTrades),
     onTimeDeliveryRate: BigInt(reputation.onTimeDeliveryRate.toString()),
-    qualityPassRate: BigInt(reputation.qualityPassRate.toString()),
+    qualityPassRate: BigInt(qualityPassRate),
     disputeRate: BigInt(disputeRate),
     currentTrustScore: BigInt(reputation.currentTrustScore.toString()),
     totalTrades: BigInt(reputation.totalTrades.toString()),
