@@ -258,6 +258,7 @@ export async function getExporterReputationController(
         disputedTrades: reputation.disputedTrades.toString(),
         failedTrades: reputation.failedTrades.toString(),
         cancelledTrades: reputation.cancelledTrades.toString(),
+        inspectedTrades: reputation.inspectedTrades.toString(),
         onTimeDeliveryRate: reputation.onTimeDeliveryRate.toString(),
         qualityPassRate: reputation.qualityPassRate.toString(),
         disputeRate: reputation.disputeRate.toString(),

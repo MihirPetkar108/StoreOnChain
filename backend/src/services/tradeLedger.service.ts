@@ -219,14 +219,32 @@ export async function getExporterReputation(
     "getExporterReputation",
   )(exporterId);
 
+  const tradeIds = await getExporterTradeIds(exporterId);
+  const trades = await Promise.all(
+    tradeIds.map((id: string) => getTrade(id)),
+  );
+  const disputedTrades = trades.filter(
+    (trade) =>
+      trade.tradeStatus.trim().toUpperCase() === "DISPUTED" ||
+      trade.disputeStatus.trim().toUpperCase() !== "NONE",
+  ).length;
+  const inspectedTrades = trades.filter((trade) => {
+    const inspectionStatus = trade.inspectionStatus.trim().toUpperCase();
+    return inspectionStatus === "PASSED" || inspectionStatus === "FAILED";
+  }).length;
+  const disputeRate = tradeIds.length
+    ? Math.floor((disputedTrades * 10000) / tradeIds.length)
+    : 0;
+
   return {
     successfulTrades: BigInt(reputation.successfulTrades.toString()),
-    disputedTrades: BigInt(reputation.disputedTrades.toString()),
+    disputedTrades: BigInt(disputedTrades),
     failedTrades: BigInt(reputation.failedTrades.toString()),
     cancelledTrades: BigInt(reputation.cancelledTrades.toString()),
+    inspectedTrades: BigInt(inspectedTrades),
     onTimeDeliveryRate: BigInt(reputation.onTimeDeliveryRate.toString()),
     qualityPassRate: BigInt(reputation.qualityPassRate.toString()),
-    disputeRate: BigInt(reputation.disputeRate.toString()),
+    disputeRate: BigInt(disputeRate),
     currentTrustScore: BigInt(reputation.currentTrustScore.toString()),
     totalTrades: BigInt(reputation.totalTrades.toString()),
   };

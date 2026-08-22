@@ -43,6 +43,8 @@ export interface ExporterReputation {
 
   cancelledTrades: bigint;
 
+  inspectedTrades: bigint;
+
   onTimeDeliveryRate: bigint;
 
   qualityPassRate: bigint;
