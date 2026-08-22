@@ -204,8 +204,21 @@ export async function getExporterTradeIds(
   const tradeIds = await tradeLedgerContract.getFunction("getExporterTradeIds")(
     exporterId,
   );
+  const trades = await Promise.all(
+    tradeIds.map(async (id: string) => ({
+      id,
+      trade: await getTrade(id),
+    })),
+  );
 
-  return tradeIds.map((id: string) => id);
+  return trades
+    .sort(
+      (
+        first: { id: string; trade: Trade },
+        second: { id: string; trade: Trade },
+      ) => (first.trade.timestamp > second.trade.timestamp ? -1 : 1),
+    )
+    .map(({ id }) => id);
 }
 
 // ============================================================
@@ -271,7 +284,9 @@ export async function getAllTrades(): Promise<Trade[]> {
         return await getTrade(id);
       }),
     );
-    return trades;
+    return trades.sort((first, second) =>
+      first.timestamp > second.timestamp ? -1 : 1,
+    );
   } catch (error) {
     console.error("Error fetching all trades:", error);
     throw new Error("Failed to fetch all trades");
@@ -287,22 +302,26 @@ export async function getTradesByStatus(status: string): Promise<Trade[]> {
     const trades =
       await tradeLedgerContract.getFunction("getTradesByStatus")(status);
 
-    return trades.map((trade: any) => ({
-      transactionId: trade.transactionId,
-      exporterId: trade.exporterId,
-      importerId: trade.importerId,
-      product: trade.product,
-      quantity: BigInt(trade.quantity.toString()),
-      tradeStatus: trade.tradeStatus,
-      inspectionStatus: trade.inspectionStatus,
-      disputeStatus: trade.disputeStatus,
-      settlementStatus: trade.settlementStatus,
-      expectedDelivery: BigInt(trade.expectedDelivery.toString()),
-      actualDelivery: BigInt(trade.actualDelivery.toString()),
-      invoiceHash: trade.invoiceHash,
-      trustScoreAfterTrade: BigInt(trade.trustScoreAfterTrade.toString()),
-      timestamp: BigInt(trade.timestamp.toString()),
-    }));
+    return trades
+      .map((trade: any) => ({
+        transactionId: trade.transactionId,
+        exporterId: trade.exporterId,
+        importerId: trade.importerId,
+        product: trade.product,
+        quantity: BigInt(trade.quantity.toString()),
+        tradeStatus: trade.tradeStatus,
+        inspectionStatus: trade.inspectionStatus,
+        disputeStatus: trade.disputeStatus,
+        settlementStatus: trade.settlementStatus,
+        expectedDelivery: BigInt(trade.expectedDelivery.toString()),
+        actualDelivery: BigInt(trade.actualDelivery.toString()),
+        invoiceHash: trade.invoiceHash,
+        trustScoreAfterTrade: BigInt(trade.trustScoreAfterTrade.toString()),
+        timestamp: BigInt(trade.timestamp.toString()),
+      }))
+      .sort((first: Trade, second: Trade) =>
+        first.timestamp > second.timestamp ? -1 : 1,
+      );
   } catch (error) {
     console.error("Error fetching trades by status:", error);
     const message =
@@ -344,9 +363,11 @@ export async function getTradesForExporterByStatus(
     const normalizedStatus = status.trim().toUpperCase();
 
     // Filter trades by status
-    return trades.filter(
-      (trade) => trade.tradeStatus.trim().toUpperCase() === normalizedStatus,
-    );
+    return trades
+      .filter(
+        (trade) => trade.tradeStatus.trim().toUpperCase() === normalizedStatus,
+      )
+      .sort((first, second) => (first.timestamp > second.timestamp ? -1 : 1));
   } catch (error) {
     console.error("Error fetching exporter trades by status:", error);
     throw new Error("Failed to fetch exporter trades by status");
