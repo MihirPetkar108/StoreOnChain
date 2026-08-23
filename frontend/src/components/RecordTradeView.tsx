@@ -273,6 +273,7 @@ export const RecordTradeView: React.FC = () => {
               onChange={(e) => setTradeStatus(e.target.value)}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
             >
+              <option value="CREATED">CREATED</option>
               <option value="COMPLETED">COMPLETED</option>
               <option value="CANCELLED">CANCELLED</option>
               <option value="DISPUTED">DISPUTED</option>

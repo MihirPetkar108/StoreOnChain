@@ -37,6 +37,7 @@ export const TradeLedgerView: React.FC = () => {
 
   const statuses = [
     "ALL",
+    "CREATED",
     "INSPECTED",
     "DISPUTED",
     "COMPLETED",
