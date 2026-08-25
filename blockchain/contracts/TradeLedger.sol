@@ -9,13 +9,17 @@ contract TradeLedger {
     // ============================================================
 
     struct Trade {
+        string recordId;
         string transactionId;
+        string listingId;
 
         string exporterId;
         string importerId;
 
         string product;
         uint256 quantity;
+        uint256 totalAmount;
+        string currency;
 
         string tradeStatus;
         string inspectionStatus;
@@ -71,7 +75,7 @@ contract TradeLedger {
     // STORAGE
     // ============================================================
 
-    // transactionId => Trade
+    // recordId => Trade
     //
     // Example:
     // "TX10291" => Trade(...)
@@ -90,6 +94,9 @@ contract TradeLedger {
     // tradeStatus => list of transaction IDs
     mapping(string => string[]) private tradesByStatus;
 
+    // transactionId => lifecycle record IDs
+    mapping(string => string[]) private transactionRecordIds;
+
     // exporterId => ReputationStats
     //
     // Example:
@@ -106,6 +113,7 @@ contract TradeLedger {
     // ============================================================
 
     event TradeRecorded(
+        string recordId,
         string transactionId,
         string exporterId,
         string importerId,
@@ -121,10 +129,13 @@ contract TradeLedger {
 
 struct TradeInput {
     string transactionId;
+    string listingId;
     string exporterId;
     string importerId;
     string product;
     uint256 quantity;
+    uint256 totalAmount;
+    string currency;
     string tradeStatus;
     string inspectionStatus;
     string disputeStatus;
@@ -139,6 +150,7 @@ struct TradeInput {
     // ============================================================
 
  function recordTrade(
+     string memory recordId,
     TradeInput memory input,
     uint256 trustScoreAfterTrade
 ) public {
@@ -146,6 +158,11 @@ struct TradeInput {
     // --------------------------------------------------------
     // Prevent invalid or duplicate transaction IDs
     // --------------------------------------------------------
+
+    require(
+        bytes(recordId).length > 0,
+        "Record ID cannot be empty"
+    );
 
     require(
         bytes(input.transactionId).length > 0,
@@ -163,8 +180,8 @@ struct TradeInput {
     );
 
     require(
-        bytes(trades[input.transactionId].transactionId).length == 0,
-        "Trade already exists"
+        bytes(trades[recordId].recordId).length == 0,
+        "Record already exists"
     );
 
 
@@ -173,13 +190,17 @@ struct TradeInput {
     // --------------------------------------------------------
 
     Trade memory newTrade = Trade({
+        recordId: recordId,
         transactionId: input.transactionId,
+        listingId: input.listingId,
 
         exporterId: input.exporterId,
         importerId: input.importerId,
 
         product: input.product,
         quantity: input.quantity,
+        totalAmount: input.totalAmount,
+        currency: input.currency,
 
         tradeStatus: input.tradeStatus,
         inspectionStatus: input.inspectionStatus,
@@ -201,17 +222,18 @@ struct TradeInput {
     // Store trade
     // --------------------------------------------------------
 
-    trades[input.transactionId] = newTrade;
-    allTradeIds.push(input.transactionId);
+    trades[recordId] = newTrade;
+    allTradeIds.push(recordId);
+    transactionRecordIds[input.transactionId].push(recordId);
 
     // --------------------------------------------------------
     // Associate trade with exporter
     // --------------------------------------------------------
 
-    exporterTradeIds[input.exporterId].push(input.transactionId);
+    exporterTradeIds[input.exporterId].push(recordId);
 
     // Associate trade with its current status
-    tradesByStatus[input.tradeStatus].push(input.transactionId);
+    tradesByStatus[input.tradeStatus].push(recordId);
 
     // --------------------------------------------------------
     // Update exporter reputation
@@ -320,6 +342,7 @@ struct TradeInput {
     // --------------------------------------------------------
 
     emit TradeRecorded(
+        recordId,
         input.transactionId,
         input.exporterId,
         input.importerId,
@@ -334,18 +357,31 @@ struct TradeInput {
     // ============================================================
 
     function getTrade(
-        string memory transactionId
+        string memory recordId
     )
         public
         view
         returns (Trade memory)
     {
         require(
-            bytes(trades[transactionId].transactionId).length > 0,
+            bytes(trades[recordId].recordId).length > 0,
             "Trade does not exist"
         );
 
-        return trades[transactionId];
+        return trades[recordId];
+    }
+
+    function getTradesByTransactionId(string memory transactionId)
+        public
+        view
+        returns (Trade[] memory)
+    {
+        string[] memory recordIds = transactionRecordIds[transactionId];
+        Trade[] memory result = new Trade[](recordIds.length);
+        for (uint256 i = 0; i < recordIds.length; i++) {
+            result[i] = trades[recordIds[i]];
+        }
+        return result;
     }
 
 
