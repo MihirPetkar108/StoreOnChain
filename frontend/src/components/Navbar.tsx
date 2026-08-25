@@ -6,6 +6,7 @@ import {
   Award,
   Activity,
   Server,
+  ShoppingBag,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -25,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const navItems = [
     { id: "dashboard", label: "Overview", icon: Activity },
+    { id: "marketplace", label: "Marketplace", icon: ShoppingBag },
     { id: "record", label: "Record Trade", icon: Boxes },
     { id: "invoice", label: "Invoice Tools", icon: FileText },
     { id: "ledger", label: "Trade Ledger", icon: ShieldCheck },
@@ -36,7 +38,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo Brand */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab("dashboard")}>
+          <div
+            className="flex items-center space-x-3 cursor-pointer"
+            onClick={() => setActiveTab("dashboard")}
+          >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 p-0.5 shadow-lg shadow-indigo-500/20">
               <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
                 <ShieldCheck className="w-6 h-6 text-indigo-400" />
@@ -44,12 +49,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="font-bold text-lg text-white tracking-wide">StoreOnChain</span>
+                <span className="font-bold text-lg text-white tracking-wide">
+                  StoreOnChain
+                </span>
                 <span className="text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   dApp
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Decentralized Trade & Invoice Verification</p>
+              <p className="text-xs text-slate-400">
+                Decentralized Trade & Invoice Verification
+              </p>
             </div>
           </div>
 
@@ -89,16 +98,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                     checkingHealth
                       ? "bg-amber-400 animate-ping"
                       : backendConnected
-                      ? "bg-emerald-400 shadow-[0_0_8px_#34d399]"
-                      : "bg-rose-500"
+                        ? "bg-emerald-400 shadow-[0_0_8px_#34d399]"
+                        : "bg-rose-500"
                   }`}
                 />
                 <span className="text-xs font-medium text-slate-300">
                   {checkingHealth
                     ? "Checking..."
                     : backendConnected
-                    ? "Backend Active"
-                    : "Disconnected"}
+                      ? "Backend Active"
+                      : "Disconnected"}
                 </span>
               </div>
             </button>

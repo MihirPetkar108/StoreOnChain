@@ -1,9 +1,14 @@
 export interface Trade {
+  recordId: string;
   transactionId: string;
+  listingId?: string;
   exporterId: string;
   importerId: string;
   product: string;
   quantity: string;
+  totalAmount: string;
+  currency: string;
+  transactionHash: string;
   tradeStatus: string;
   inspectionStatus: string;
   disputeStatus: string;
@@ -33,6 +38,16 @@ export interface ProcessInvoiceResponse {
   message?: string;
 }
 
+export interface MarketplaceListing {
+  id: string;
+  product: string;
+  unitPrice: number;
+  currency: string;
+  availableQuantity: number | null;
+  exporterId: string;
+  description: string;
+}
+
 export interface VerifyInvoiceResponse {
   success: boolean;
   verified?: boolean;
@@ -41,10 +56,12 @@ export interface VerifyInvoiceResponse {
 
 export interface RecordTradePayload {
   transactionId: string;
+  listingId: string;
   exporterId: string;
   importerId: string;
-  product: string;
   quantity: number;
+  totalAmount: number;
+  currency: string;
   tradeStatus: string;
   inspectionStatus: string;
   disputeStatus: string;
@@ -52,7 +69,7 @@ export interface RecordTradePayload {
   expectedDelivery: string;
   actualDelivery: string;
   trustScoreAfterTrade: number;
-  invoiceFile: File;
+  invoiceFile?: File;
 }
 
 export interface TradesByStatusResponse {

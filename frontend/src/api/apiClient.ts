@@ -6,6 +6,7 @@ import type {
   TradesByStatusResponse,
   ExporterTradesResponse,
   ExporterReputationResponse,
+  MarketplaceListing,
 } from "../types";
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
@@ -85,6 +86,13 @@ function sendRequest<T = any>(
 }
 
 export const api = {
+  async getListings(): Promise<{
+    success: boolean;
+    listings?: MarketplaceListing[];
+    message?: string;
+  }> {
+    return sendRequest("GET", `${BASE_URL}/api/listings`);
+  },
   // GET / -> Health check
   async checkHealth(): Promise<{ success: boolean; message: string }> {
     try {
@@ -139,12 +147,18 @@ export const api = {
     data?: Trade;
   }> {
     const formData = new FormData();
-    formData.append("invoice", payload.invoiceFile);
-    formData.append("transactionId", payload.transactionId);
+    if (payload.invoiceFile) {
+      formData.append("invoice", payload.invoiceFile);
+    }
+    if (payload.transactionId) {
+      formData.append("transactionId", payload.transactionId);
+    }
+    formData.append("listingId", payload.listingId);
     formData.append("exporterId", payload.exporterId);
     formData.append("importerId", payload.importerId);
-    formData.append("product", payload.product);
     formData.append("quantity", payload.quantity.toString());
+    formData.append("totalAmount", payload.totalAmount.toString());
+    formData.append("currency", payload.currency);
     formData.append("tradeStatus", payload.tradeStatus);
     formData.append("inspectionStatus", payload.inspectionStatus);
     formData.append("disputeStatus", payload.disputeStatus);
@@ -171,6 +185,7 @@ export const api = {
   async getTradeById(transactionId: string): Promise<{
     success: boolean;
     trade?: Trade;
+    trades?: Trade[];
     message?: string;
   }> {
     return sendRequest(

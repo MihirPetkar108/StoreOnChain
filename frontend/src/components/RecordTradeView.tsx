@@ -2,25 +2,21 @@ import React, { useState } from "react";
 import { api } from "../api/apiClient";
 import type { Trade } from "../types";
 import {
-  Upload,
   CheckCircle2,
   AlertCircle,
   Loader2,
-  FileText,
   Boxes,
-  Sparkles,
   ShieldCheck,
 } from "lucide-react";
 
 export const RecordTradeView: React.FC = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [transactionId, setTransactionId] = useState(
-    `TX-${Date.now().toString().slice(-6)}`,
-  );
-  const [exporterId, setExporterId] = useState("EXP-9001");
-  const [importerId, setImporterId] = useState("IMP-4002");
-  const [product, setProduct] = useState("Industrial Silicon Wafers 300mm");
-  const [quantity, setQuantity] = useState<number>(5000);
+  const [transactionId, setTransactionId] = useState("");
+  const [listingId] = useState("00000004-0000-0000-0000-000000000001");
+  const [exporterId] = useState("EXP-9001");
+  const [importerId] = useState("00000002-0000-0000-0000-000000000023");
+  const [quantity] = useState<number>(5000);
+  const [totalAmount] = useState<number>(5000000);
+  const [currency] = useState("USD");
   const [tradeStatus, setTradeStatus] = useState("COMPLETED");
   const [inspectionStatus, setInspectionStatus] = useState("PENDING");
   const [disputeStatus, setDisputeStatus] = useState("NONE");
@@ -29,6 +25,28 @@ export const RecordTradeView: React.FC = () => {
   const [actualDelivery, setActualDelivery] = useState("2026-09-14");
   const [trustScoreAfterTrade, setTrustScoreAfterTrade] = useState<number>(95);
 
+  const normalizedTradeStatus = tradeStatus.trim().toUpperCase();
+  const showInspectionStatus = normalizedTradeStatus === "INSPECTED";
+  const showDisputeStatus = normalizedTradeStatus === "DISPUTED";
+  const showSettlementDetails =
+    normalizedTradeStatus === "CANCELLED" ||
+    normalizedTradeStatus === "COMPLETED";
+
+  const handleTradeStatusChange = (status: string) => {
+    setTradeStatus(status);
+    if (status === "INSPECTED") {
+      setDisputeStatus("NONE");
+      setSettlementStatus("PENDING");
+    } else if (status === "DISPUTED") {
+      setInspectionStatus("PENDING");
+      setSettlementStatus("PENDING");
+    } else {
+      setInspectionStatus("PENDING");
+      setDisputeStatus("NONE");
+      setSettlementStatus("PENDING");
+    }
+  };
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successResult, setSuccessResult] = useState<{
@@ -36,46 +54,10 @@ export const RecordTradeView: React.FC = () => {
     trade?: Trade;
   } | null>(null);
 
-  const handleFillDemoData = () => {
-    const randomId = Math.floor(100000 + Math.random() * 900000);
-    setTransactionId(`TX-${randomId}`);
-    setExporterId(`EXP-${Math.floor(1000 + Math.random() * 9000)}`);
-    setImporterId(`IMP-${Math.floor(1000 + Math.random() * 9000)}`);
-    setProduct("High-Grade Copper Cathodes (99.99%)");
-    setQuantity(250);
-    setTradeStatus("COMPLETED");
-    setInspectionStatus("PASSED");
-    setDisputeStatus("NONE");
-    setSettlementStatus("PENDING");
-    setExpectedDelivery("2026-10-01");
-    setActualDelivery("2026-09-30");
-    setTrustScoreAfterTrade(98);
-
-    // Create a dummy sample invoice file if none is selected
-    if (!file) {
-      const sampleBlob = new Blob(
-        [
-          `INVOICE SUMMARY\nTransaction ID: TX-${randomId}\nAmount: $450,000 USD\nItem: Copper Cathodes\nDate: 2026-08-20\nStoreOnChain Verified.`,
-        ],
-        { type: "text/plain" },
-      );
-      const dummyFile = new File([sampleBlob], `invoice-tx-${randomId}.txt`, {
-        type: "text/plain",
-      });
-      setFile(dummyFile);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) {
-      setError("Please attach an invoice file (PDF).");
+    if (!transactionId.trim()) {
+      setError("Transaction ID is required.");
       return;
     }
 
@@ -85,30 +67,35 @@ export const RecordTradeView: React.FC = () => {
 
     try {
       const res = await api.recordTrade({
-        transactionId,
+        transactionId: transactionId.trim(),
+        listingId,
         exporterId,
         importerId,
-        product,
         quantity,
+        totalAmount,
+        currency,
         tradeStatus,
-        inspectionStatus,
-        disputeStatus,
-        settlementStatus,
-        expectedDelivery,
-        actualDelivery,
-        trustScoreAfterTrade,
-        invoiceFile: file,
+        inspectionStatus: showInspectionStatus ? inspectionStatus : "PENDING",
+        disputeStatus: showDisputeStatus ? disputeStatus : "NONE",
+        settlementStatus: showSettlementDetails ? settlementStatus : "PENDING",
+        expectedDelivery: showSettlementDetails ? expectedDelivery : "",
+        actualDelivery: showSettlementDetails ? actualDelivery : "",
+        trustScoreAfterTrade: showSettlementDetails ? trustScoreAfterTrade : 0,
       });
 
       if (res.success) {
         setSuccessResult({
           message: res.message || "Trade recorded successfully",
           trade: {
-            transactionId,
+            recordId: res.data?.recordId || "",
+            transactionId: res.data?.transactionId || transactionId,
             exporterId,
             importerId,
-            product,
+            product: res.data?.product || "",
             quantity: quantity.toString(),
+            totalAmount: totalAmount.toString(),
+            currency,
+            transactionHash: res.data?.transactionHash || "",
             tradeStatus,
             inspectionStatus,
             disputeStatus,
@@ -143,18 +130,9 @@ export const RecordTradeView: React.FC = () => {
             </h1>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Endpoint: <code className="text-indigo-300">POST /api/trades</code>{" "}
-            — Upload invoice file and persist trade metadata.
+            Add a lifecycle status to an existing blockchain transaction.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleFillDemoData}
-          className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/20 text-xs font-semibold transition"
-        >
-          <Sparkles className="w-4 h-4 text-indigo-400" />
-          <span>Auto-Fill Sample Trade</span>
-        </button>
       </div>
 
       {/* Main Form */}
@@ -162,40 +140,6 @@ export const RecordTradeView: React.FC = () => {
         onSubmit={handleSubmit}
         className="glass-card rounded-2xl p-6 sm:p-8 space-y-6"
       >
-        {/* Invoice File Upload Dropzone */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            Invoice Attachment (Required)
-          </label>
-          <div className="relative border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-center transition bg-slate-900/40">
-            <input
-              type="file"
-              onChange={handleFileChange}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <div className="flex flex-col items-center space-y-2">
-              <div className="p-3 bg-indigo-500/10 rounded-full text-indigo-400">
-                <Upload className="w-6 h-6" />
-              </div>
-              {file ? (
-                <div className="flex items-center space-x-2 text-sm text-emerald-400 font-medium">
-                  <FileText className="w-4 h-4" />
-                  <span>
-                    Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <p className="text-sm font-medium text-slate-200">
-                    Click to upload invoice or drag & drop file
-                  </p>
-                  <p className="text-xs text-slate-500">PDF Files up to 10MB</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Trade Details Input Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div>
@@ -209,59 +153,9 @@ export const RecordTradeView: React.FC = () => {
               onChange={(e) => setTransactionId(e.target.value)}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Exporter ID
-            </label>
-            <input
-              type="text"
-              required
-              value={exporterId}
-              onChange={(e) => setExporterId(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Importer ID
-            </label>
-            <input
-              type="text"
-              required
-              value={importerId}
-              onChange={(e) => setImporterId(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Product Description
-            </label>
-            <input
-              type="text"
-              required
-              value={product}
-              onChange={(e) => setProduct(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Quantity
-            </label>
-            <input
-              type="number"
-              required
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            />
+            <p className="text-[10px] text-slate-500 mt-1">
+              Use the same ID to add another lifecycle status.
+            </p>
           </div>
 
           <div>
@@ -270,10 +164,9 @@ export const RecordTradeView: React.FC = () => {
             </label>
             <select
               value={tradeStatus}
-              onChange={(e) => setTradeStatus(e.target.value)}
+              onChange={(e) => handleTradeStatusChange(e.target.value)}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
             >
-              <option value="CREATED">CREATED</option>
               <option value="COMPLETED">COMPLETED</option>
               <option value="CANCELLED">CANCELLED</option>
               <option value="DISPUTED">DISPUTED</option>
@@ -281,93 +174,106 @@ export const RecordTradeView: React.FC = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Inspection Status
-            </label>
-            <select
-              value={inspectionStatus}
-              onChange={(e) => setInspectionStatus(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            >
-              <option value="PENDING">PENDING</option>
-              <option value="PASSED">PASSED</option>
-              <option value="FAILED">FAILED</option>
-            </select>
-          </div>
+          {showInspectionStatus && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">
+                Inspection Status
+              </label>
+              <select
+                value={inspectionStatus}
+                onChange={(e) => setInspectionStatus(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="PENDING">PENDING</option>
+                <option value="PASSED">PASSED</option>
+                <option value="FAILED">FAILED</option>
+              </select>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Dispute Status
-            </label>
-            <select
-              value={disputeStatus}
-              onChange={(e) => setDisputeStatus(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            >
-              <option value="NONE">NONE</option>
-              <option value="RAISED">RAISED</option>
-              <option value="RESOLVED">RESOLVED</option>
-            </select>
-          </div>
+          {showDisputeStatus && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">
+                Dispute Status
+              </label>
+              <select
+                value={disputeStatus}
+                onChange={(e) => setDisputeStatus(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="NONE">NONE</option>
+                <option value="RAISED">RAISED</option>
+                <option value="RESOLVED">RESOLVED</option>
+              </select>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Settlement Status
-            </label>
-            <select
-              value={settlementStatus}
-              onChange={(e) => setSettlementStatus(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            >
-              <option value="PENDING">PENDING</option>
-              <option value="SETTLED">SETTLED</option>
-              <option value="REFUNDED">REFUNDED</option>
-            </select>
-          </div>
+          {showSettlementDetails && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">
+                Settlement Status
+              </label>
+              <select
+                value={settlementStatus}
+                onChange={(e) => setSettlementStatus(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="PENDING">PENDING</option>
+                <option value="SETTLED">SETTLED</option>
+                <option value="REFUNDED">REFUNDED</option>
+              </select>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Expected Delivery
-            </label>
-            <input
-              type="date"
-              required
-              value={expectedDelivery}
-              onChange={(e) => setExpectedDelivery(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
+          {showSettlementDetails && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">
+                Expected Delivery
+              </label>
+              <input
+                type="date"
+                required
+                value={expectedDelivery}
+                onChange={(e) => setExpectedDelivery(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          )}
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Actual Delivery
-            </label>
-            <input
-              type="date"
-              required
-              value={actualDelivery}
-              onChange={(e) => setActualDelivery(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
+          {showSettlementDetails && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">
+                Actual Delivery
+              </label>
+              <input
+                type="date"
+                required
+                value={actualDelivery}
+                onChange={(e) => setActualDelivery(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          )}
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
-              Trust Score After Trade (0-100)
-            </label>
-            <input
-              type="number"
-              required
-              min="0"
-              max="100"
-              value={trustScoreAfterTrade}
-              onChange={(e) => setTrustScoreAfterTrade(Number(e.target.value))}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
+          {showSettlementDetails && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">
+                Trust Score After Trade (0-100)
+              </label>
+              <input
+                type="number"
+                required
+                min="0"
+                max="100"
+                value={trustScoreAfterTrade}
+                onChange={(e) =>
+                  setTrustScoreAfterTrade(Number(e.target.value))
+                }
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          )}
         </div>
-
         {/* Form Action */}
         <div className="pt-4 border-t border-slate-800 flex items-center justify-end">
           <button
@@ -378,7 +284,7 @@ export const RecordTradeView: React.FC = () => {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Processing & Hashing...</span>
+                <span>Recording Trade...</span>
               </>
             ) : (
               <>

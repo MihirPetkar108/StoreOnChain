@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "./api/apiClient";
 import { Navbar } from "./components/Navbar";
 import { DashboardView } from "./components/DashboardView";
+import { MarketplaceView } from "./components/MarketplaceView";
 import { RecordTradeView } from "./components/RecordTradeView";
 import { InvoiceToolsView } from "./components/InvoiceToolsView";
 import { TradeLedgerView } from "./components/TradeLedgerView";
@@ -57,6 +58,8 @@ export function App() {
 
         {activeTab === "record" && <RecordTradeView />}
 
+        {activeTab === "marketplace" && <MarketplaceView />}
+
         {activeTab === "invoice" && <InvoiceToolsView />}
 
         {activeTab === "ledger" && <TradeLedgerView />}
@@ -71,12 +74,6 @@ export function App() {
             <ShieldCheck className="w-4 h-4 text-indigo-400" />
             <span>
               StoreOnChain &copy; 2026 — Decentralized Trade & Invoice Platform
-            </span>
-          </div>
-          <div className="flex items-center space-x-6">
-            <span className="text-slate-400 font-mono">Backend Port: 3000</span>
-            <span className="text-slate-400 font-mono">
-              Frontend Port: 5173
             </span>
           </div>
         </div>

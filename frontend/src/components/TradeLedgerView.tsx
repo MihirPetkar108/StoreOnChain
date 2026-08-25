@@ -18,14 +18,14 @@ export const TradeLedgerView: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copiedHash, setCopiedHash] = useState<string | null>(null);
+  const [copiedCell, setCopiedCell] = useState<string | null>(null);
 
-  const handleCopyHash = (hash: string) => {
-    if (!hash) return;
-    navigator.clipboard.writeText(hash);
-    setCopiedHash(hash);
+  const handleCopyValue = (value: string, cellKey: string) => {
+    if (!value) return;
+    navigator.clipboard.writeText(value);
+    setCopiedCell(cellKey);
     setTimeout(() => {
-      setCopiedHash(null);
+      setCopiedCell(null);
     }, 2000);
   };
 
@@ -34,6 +34,7 @@ export const TradeLedgerView: React.FC = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  const [selectedTrades, setSelectedTrades] = useState<Trade[]>([]);
 
   const statuses = [
     "ALL",
@@ -74,11 +75,13 @@ export const TradeLedgerView: React.FC = () => {
     setSearchLoading(true);
     setSearchError(null);
     setSelectedTrade(null);
+    setSelectedTrades([]);
 
     try {
       const res = await api.getTradeById(searchTxId.trim());
       if (res.success && res.trade) {
         setSelectedTrade(res.trade);
+        setSelectedTrades(res.trades || [res.trade]);
       } else {
         setSearchError(res.message || `Trade '${searchTxId}' not found.`);
       }
@@ -116,12 +119,22 @@ export const TradeLedgerView: React.FC = () => {
               <span>Blockchain Trade Ledger</span>
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Endpoints: <code className="text-indigo-300">GET /api/trades?status=&lt;status&gt;</code> & <code className="text-indigo-300">GET /api/trades/:transactionId</code>
+              Endpoints:{" "}
+              <code className="text-indigo-300">
+                GET /api/trades?status=&lt;status&gt;
+              </code>{" "}
+              &{" "}
+              <code className="text-indigo-300">
+                GET /api/trades/:transactionId
+              </code>
             </p>
           </div>
 
           {/* Search Bar for single trade */}
-          <form onSubmit={handleSearchSingleTrade} className="flex items-center space-x-2">
+          <form
+            onSubmit={handleSearchSingleTrade}
+            className="flex items-center space-x-2"
+          >
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
@@ -137,7 +150,11 @@ export const TradeLedgerView: React.FC = () => {
               disabled={searchLoading}
               className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium transition disabled:opacity-50"
             >
-              {searchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Lookup"}
+              {searchLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                "Lookup"
+              )}
             </button>
           </form>
         </div>
@@ -185,39 +202,163 @@ export const TradeLedgerView: React.FC = () => {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Record ID</span>
+              <span className="font-semibold text-slate-200 break-all">
+                {selectedTrade.recordId}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Transaction ID</span>
+              <span className="font-semibold text-indigo-300 break-all">
+                {selectedTrade.transactionId}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-500 block">Product</span>
-              <span className="font-semibold text-slate-200">{selectedTrade.product}</span>
+              <span className="font-semibold text-slate-200">
+                {selectedTrade.product}
+              </span>
             </div>
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-500 block">Exporter ID</span>
-              <span className="font-semibold text-indigo-300">{selectedTrade.exporterId}</span>
+              <span className="font-semibold text-indigo-300">
+                {selectedTrade.exporterId}
+              </span>
             </div>
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-500 block">Importer ID</span>
-              <span className="font-semibold text-cyan-300">{selectedTrade.importerId}</span>
+              <span className="font-semibold text-cyan-300">
+                {selectedTrade.importerId}
+              </span>
             </div>
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-500 block">Quantity</span>
-              <span className="font-semibold text-slate-200">{selectedTrade.quantity}</span>
+              <span className="font-semibold text-slate-200">
+                {selectedTrade.quantity}
+              </span>
             </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Total Amount</span>
+              <span className="font-semibold text-slate-200">
+                {selectedTrade.currency} {selectedTrade.totalAmount}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Listing ID</span>
+              <span className="font-semibold text-slate-200 break-all">
+                {selectedTrade.listingId || "Unavailable"}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Trade Status</span>
+              <span
+                className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(selectedTrade.tradeStatus)}`}
+              >
+                {selectedTrade.tradeStatus}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Inspection Status</span>
+              <span
+                className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(selectedTrade.inspectionStatus)}`}
+              >
+                {selectedTrade.inspectionStatus}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Dispute Status</span>
+              <span
+                className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(selectedTrade.disputeStatus)}`}
+              >
+                {selectedTrade.disputeStatus}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Settlement Status</span>
+              <span
+                className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(selectedTrade.settlementStatus)}`}
+              >
+                {selectedTrade.settlementStatus}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Expected Delivery</span>
+              <span className="font-semibold text-slate-200">
+                {selectedTrade.expectedDelivery}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Actual Delivery</span>
+              <span className="font-semibold text-slate-200">
+                {selectedTrade.actualDelivery}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Trust Score</span>
+              <span className="font-semibold text-slate-200">
+                {selectedTrade.trustScoreAfterTrade}
+              </span>
+            </div>
+            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+              <span className="text-slate-500 block">Timestamp</span>
+              <span className="font-semibold text-slate-200">
+                {selectedTrade.timestamp}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-slate-300">
+              Lifecycle Records ({selectedTrades.length})
+            </h4>
+            {selectedTrades.map((trade) => (
+              <div
+                key={trade.recordId}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-xs"
+              >
+                <span className="font-semibold text-indigo-300">
+                  {trade.tradeStatus}
+                </span>
+                <span className="text-slate-400">Record: {trade.recordId}</span>
+                <span className="text-slate-400">
+                  Inspection: {trade.inspectionStatus}
+                </span>
+                <span className="text-slate-400">
+                  Dispute: {trade.disputeStatus} / Settlement:{" "}
+                  {trade.settlementStatus}
+                </span>
+                <span className="text-slate-400">
+                  Delivery: {trade.expectedDelivery} / {trade.actualDelivery}
+                </span>
+              </div>
+            ))}
           </div>
 
           <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs font-mono text-indigo-300 flex items-center justify-between gap-2">
             <div className="truncate">
               <span className="text-slate-500 font-sans">Invoice Hash: </span>
-              <span title={selectedTrade.invoiceHash}>{selectedTrade.invoiceHash}</span>
+              <span title={selectedTrade.invoiceHash}>
+                {selectedTrade.invoiceHash}
+              </span>
             </div>
             {selectedTrade.invoiceHash && (
               <button
                 type="button"
-                onClick={() => handleCopyHash(selectedTrade.invoiceHash)}
+                onClick={() =>
+                  handleCopyValue(
+                    selectedTrade.invoiceHash,
+                    `${selectedTrade.recordId}:invoiceHash`,
+                  )
+                }
                 title="Copy invoice hash"
                 className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-900 rounded-lg transition shrink-0 flex items-center space-x-1"
               >
-                {copiedHash === selectedTrade.invoiceHash ? (
+                {copiedCell === `${selectedTrade.recordId}:invoiceHash` ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-[10px] text-emerald-400 font-sans">Copied</span>
+                    <span className="text-[10px] text-emerald-400 font-sans">
+                      Copied
+                    </span>
                   </>
                 ) : (
                   <Copy className="w-3.5 h-3.5" />
@@ -233,10 +374,15 @@ export const TradeLedgerView: React.FC = () => {
         <div className="p-4 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-2 text-sm font-semibold text-slate-300">
             <ListFilter className="w-4 h-4 text-indigo-400" />
-            <span>Trades matching status: <span className="text-indigo-400">{selectedStatus}</span></span>
+            <span>
+              Trades matching status:{" "}
+              <span className="text-indigo-400">{selectedStatus}</span>
+            </span>
           </div>
           <div className="flex items-center space-x-3">
-            <span className="text-xs text-slate-400">{trades.length} items</span>
+            <span className="text-xs text-slate-400">
+              {trades.length} items
+            </span>
             <button
               type="button"
               onClick={() => fetchTradesByStatus(selectedStatus)}
@@ -244,7 +390,9 @@ export const TradeLedgerView: React.FC = () => {
               title="Refresh ledger"
               className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition disabled:opacity-50"
             >
-              <RotateCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-indigo-400" : ""}`} />
+              <RotateCw
+                className={`w-3.5 h-3.5 ${loading ? "animate-spin text-indigo-400" : ""}`}
+              />
               <span>Refresh</span>
             </button>
           </div>
@@ -256,12 +404,14 @@ export const TradeLedgerView: React.FC = () => {
             <p className="text-xs">Querying blockchain trade ledger...</p>
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-slate-400 text-sm">
-            {error}
-          </div>
+          <div className="p-8 text-center text-slate-400 text-sm">{error}</div>
         ) : trades.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-sm">
-            No trades found matching status "<span className="text-slate-200 font-semibold">{selectedStatus}</span>". Try recording a new trade or changing the filter.
+            No trades found matching status "
+            <span className="text-slate-200 font-semibold">
+              {selectedStatus}
+            </span>
+            ". Try recording a new trade or changing the filter.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -275,51 +425,101 @@ export const TradeLedgerView: React.FC = () => {
                   <th className="py-3 px-4">Qty</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4">Inspection</th>
-                  <th className="py-3 px-4">Invoice Hash</th>
+                  <th className="py-3 px-4">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-300 font-medium">
                 {trades.map((t) => (
-                  <tr key={t.transactionId} className="hover:bg-slate-900/40 transition">
+                  <tr
+                    key={t.recordId}
+                    className="hover:bg-slate-900/40 transition"
+                  >
                     <td className="py-3.5 px-4 font-mono text-indigo-300 font-semibold">
-                      {t.transactionId}
+                      <div className="flex items-start gap-2">
+                        <span className="break-all">{t.transactionId}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyValue(
+                              t.transactionId,
+                              `${t.recordId}:transactionId`,
+                            )
+                          }
+                          title="Copy transaction ID"
+                          className="p-1 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded transition shrink-0"
+                        >
+                          {copiedCell === `${t.recordId}:transactionId` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-200">{t.exporterId}</td>
-                    <td className="py-3.5 px-4 text-slate-200">{t.importerId}</td>
-                    <td className="py-3.5 px-4 max-w-xs truncate">{t.product}</td>
+                    <td className="py-3.5 px-4 text-slate-200">
+                      <div className="flex items-start gap-2">
+                        <span className="break-all">{t.exporterId}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyValue(
+                              t.exporterId,
+                              `${t.recordId}:exporterId`,
+                            )
+                          }
+                          title="Copy exporter ID"
+                          className="p-1 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded transition shrink-0"
+                        >
+                          {copiedCell === `${t.recordId}:exporterId` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-200">
+                      <div className="flex items-start gap-2">
+                        <span className="break-all">{t.importerId}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyValue(
+                              t.importerId,
+                              `${t.recordId}:importerId`,
+                            )
+                          }
+                          title="Copy importer ID"
+                          className="p-1 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded transition shrink-0"
+                        >
+                          {copiedCell === `${t.recordId}:importerId` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 max-w-xs truncate">
+                      {t.product}
+                    </td>
                     <td className="py-3.5 px-4 text-slate-300">{t.quantity}</td>
                     <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(t.tradeStatus)}`}>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(t.tradeStatus)}`}
+                      >
                         {t.tradeStatus}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(t.inspectionStatus)}`}>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(t.inspectionStatus)}`}
+                      >
                         {t.inspectionStatus}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-400">
-                      {t.invoiceHash ? (
-                        <div className="flex items-center space-x-2">
-                          <span title={t.invoiceHash} className="truncate max-w-[110px]">
-                            {t.invoiceHash.slice(0, 12)}...
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyHash(t.invoiceHash)}
-                            title="Copy invoice hash"
-                            className="p-1 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded transition shrink-0"
-                          >
-                            {copiedHash === t.invoiceHash ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      ) : (
-                        "N/A"
-                      )}
+                    <td className="py-3.5 px-4 text-slate-300">
+                      {t.currency} {t.totalAmount}
                     </td>
                   </tr>
                 ))}
