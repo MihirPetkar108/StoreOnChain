@@ -40,6 +40,10 @@ const tradeLedgerWriteContract = new ethers.Contract(
 // ============================================================
 
 function dateToUnixTimestamp(date: string): bigint {
+  if (!date) {
+    return 0n;
+  }
+
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error(`Invalid date format: ${date}. Expected YYYY-MM-DD`);
   }
@@ -121,12 +125,16 @@ export async function recordTrade(input: RecordTradeRequest): Promise<{
     // ----------------------------------------------------------
 
     const tx = await tradeLedgerWriteContract.getFunction("recordTrade")(
+      input.recordId,
       [
         input.transactionId,
+        input.listingId,
         input.exporterId,
         input.importerId,
         input.product,
         BigInt(input.quantity),
+        BigInt(input.totalAmount),
+        input.currency,
         input.tradeStatus,
         input.inspectionStatus,
         input.disputeStatus,
@@ -156,32 +164,68 @@ export async function recordTrade(input: RecordTradeRequest): Promise<{
       transactionHash: receipt.hash,
       blockNumber: receipt.blockNumber,
     };
-  } catch (error) {
-    console.error("Error recording trade:", error);
-    const message =
-      error instanceof Error ? error.message : "Trade already exists";
+  } catch (error: any) {
+    //   console.error("Error recording trade:", error);
+    //   const message =
+    //     error instanceof Error ? error.message : "Trade already exists";
 
-    if (message.includes("Trade already exists")) {
+    //   if (message.includes("Trade already exists")) {
+    //     throw new Error("Trade already exists");
+    //   }
+
+    //   throw new Error("Failed to record trade");
+    // }
+
+    console.error("========== BLOCKCHAIN RECORD TRADE ERROR ==========");
+
+    console.error("Error:", error);
+
+    console.error("Message:", error?.message);
+
+    console.error("Reason:", error?.reason);
+
+    console.error("Short Message:", error?.shortMessage);
+
+    console.error("Code:", error?.code);
+
+    console.error("Data:", error?.data);
+
+    console.error("Error Info:", error?.info);
+
+    console.error("====================================================");
+
+    if (
+      error instanceof Error &&
+      error.message.includes("Trade already exists")
+    ) {
       throw new Error("Trade already exists");
     }
 
-    throw new Error("Failed to record trade");
+    throw new Error(
+      error?.shortMessage ||
+        error?.reason ||
+        error?.message ||
+        "Failed to record trade",
+    );
   }
 }
+
 // ============================================================
 // GET ONE TRADE
 // ============================================================
 
-export async function getTrade(transactionId: string): Promise<Trade> {
-  const trade =
-    await tradeLedgerContract.getFunction("getTrade")(transactionId);
-
+function mapTrade(trade: any): Trade {
   return {
+    recordId: trade.recordId,
     transactionId: trade.transactionId,
+    listingId: trade.listingId,
     exporterId: trade.exporterId,
     importerId: trade.importerId,
     product: trade.product,
     quantity: BigInt(trade.quantity.toString()),
+    totalAmount: BigInt(trade.totalAmount.toString()),
+    currency: trade.currency,
+    transactionHash: "",
     tradeStatus: trade.tradeStatus,
     inspectionStatus: trade.inspectionStatus,
     disputeStatus: trade.disputeStatus,
@@ -192,6 +236,20 @@ export async function getTrade(transactionId: string): Promise<Trade> {
     trustScoreAfterTrade: BigInt(trade.trustScoreAfterTrade.toString()),
     timestamp: BigInt(trade.timestamp.toString()),
   };
+}
+
+export async function getTrade(recordId: string): Promise<Trade> {
+  const trade = await tradeLedgerContract.getFunction("getTrade")(recordId);
+  return mapTrade(trade);
+}
+
+export async function getTradesByTransactionId(
+  transactionId: string,
+): Promise<Trade[]> {
+  const trades = await tradeLedgerContract.getFunction(
+    "getTradesByTransactionId",
+  )(transactionId);
+  return Promise.all(trades.map((trade: any) => getTrade(trade.recordId)));
 }
 
 // ============================================================
@@ -302,26 +360,11 @@ export async function getTradesByStatus(status: string): Promise<Trade[]> {
     const trades =
       await tradeLedgerContract.getFunction("getTradesByStatus")(status);
 
-    return trades
-      .map((trade: any) => ({
-        transactionId: trade.transactionId,
-        exporterId: trade.exporterId,
-        importerId: trade.importerId,
-        product: trade.product,
-        quantity: BigInt(trade.quantity.toString()),
-        tradeStatus: trade.tradeStatus,
-        inspectionStatus: trade.inspectionStatus,
-        disputeStatus: trade.disputeStatus,
-        settlementStatus: trade.settlementStatus,
-        expectedDelivery: BigInt(trade.expectedDelivery.toString()),
-        actualDelivery: BigInt(trade.actualDelivery.toString()),
-        invoiceHash: trade.invoiceHash,
-        trustScoreAfterTrade: BigInt(trade.trustScoreAfterTrade.toString()),
-        timestamp: BigInt(trade.timestamp.toString()),
-      }))
-      .sort((first: Trade, second: Trade) =>
-        first.timestamp > second.timestamp ? -1 : 1,
-      );
+    return (
+      await Promise.all(trades.map((trade: any) => getTrade(trade.recordId)))
+    ).sort((first: Trade, second: Trade) =>
+      first.timestamp > second.timestamp ? -1 : 1,
+    );
   } catch (error) {
     console.error("Error fetching trades by status:", error);
     const message =

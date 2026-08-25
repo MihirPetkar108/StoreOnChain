@@ -7,7 +7,6 @@ export interface CreateTradeData {
   total_amount?: number | null;
   currency?: string | null;
   quantity?: number | null;
-  agreed_price?: number | null;
 }
 
 export interface UpdateTradeData {
@@ -15,6 +14,5 @@ export interface UpdateTradeData {
   total_amount?: number | null;
   currency?: string | null;
   quantity?: number | null;
-  agreed_price?: number | null;
   updated_at?: string;
 }

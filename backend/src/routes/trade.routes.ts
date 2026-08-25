@@ -9,8 +9,24 @@ import {
   getExporterTradeIdsByStatusController,
 } from "../controllers/trade.controller.js";
 import { uploadSingle } from "../utilities/storage.js";
+import { getMarketplaceListings } from "../services/tradeDB.service.js";
 
 const router = Router();
+
+router.get("/listings", async (_req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      listings: await getMarketplaceListings(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to fetch listings",
+    });
+  }
+});
 
 // ============================================================
 // RECORD TRADE

@@ -7,13 +7,18 @@
 // ============================================================
 
 export interface Trade {
+  recordId: string;
   transactionId: string;
+  listingId: string;
 
   exporterId: string;
   importerId: string;
 
   product: string;
   quantity: bigint;
+  totalAmount: bigint;
+  currency: string;
+  transactionHash: string;
 
   tradeStatus: string;
   inspectionStatus: string;
@@ -71,7 +76,6 @@ export interface RecordTradeRequest {
   totalAmount: number;
   currency: string;
   quantity: number;
-  agreedPrice: number;
 
   // Blockchain trade fields
   product: string;
@@ -88,4 +92,5 @@ export interface RecordTradeRequest {
   invoiceHash: string;
 
   trustScoreAfterTrade: number;
+  recordId: string;
 }

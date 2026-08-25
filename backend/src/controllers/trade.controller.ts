@@ -4,17 +4,14 @@ import {
   getExporterTradeIds,
   getExporterReputation,
   recordTrade,
+  getTradesByTransactionId,
   getTradesByStatus,
   getTradesForExporterByStatus,
 } from "../services/tradeLedger.service.js";
 import type { RecordTradeRequest } from "../types/trade.types.js";
 import axios from "axios";
 import { deleteInvoice } from "../services/storage.service.js";
-import {
-  createTrade,
-  deleteTrade,
-  updateTradeStatus,
-} from "../services/tradeDB.service.js";
+import { getProductFromListing } from "../services/tradeDB.service.js";
 import { randomUUID } from "node:crypto";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
@@ -28,69 +25,110 @@ export async function recordTradeController(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const input: RecordTradeRequest = req.body as RecordTradeRequest;
-  let tradeId: string | null = null;
+  const body = req.body as Record<string, unknown>;
+  const input: RecordTradeRequest = {
+    ...body,
+    transactionId: body.transactionId ?? body.transaction_id,
+    exporterId: body.exporterId ?? body.exporter_id,
+    importerId:
+      body.importerId ??
+      body.importer_id ??
+      "00000002-0000-0000-0000-000000000023",
+    listingId: body.listingId ?? body.listing_id,
+    totalAmount: body.totalAmount ?? body.total_amount,
+    tradeStatus: body.tradeStatus ?? body.trade_status ?? "PENDING",
+    trustScoreAfterTrade:
+      body.trustScoreAfterTrade ?? body.trust_score_after_trade,
+  } as RecordTradeRequest;
   try {
-    if (!req.file) {
+    if (
+      typeof input.transactionId !== "string" ||
+      input.transactionId.trim().length === 0
+    ) {
       res.status(400).json({
         success: false,
-        message: "Invoice file is required",
+        message: "transactionId is required",
       });
-
       return;
     }
 
-    // --------------------------------------------------------
-    // Convert the uploaded file into FormData
-    // --------------------------------------------------------
+    const history = await getTradesByTransactionId(input.transactionId);
+    const originalTrade = history[0];
+    const isInitialTrade = input.tradeStatus.trim().toUpperCase() === "CREATED";
+    if (!originalTrade && !isInitialTrade) {
+      res.status(404).json({
+        success: false,
+        message: "Transaction ID was not found on the blockchain",
+      });
+      return;
+    }
 
-    const formData = new FormData();
-    const fileBytes = new Uint8Array(req.file.buffer.length);
-    fileBytes.set(req.file.buffer);
+    if (originalTrade) {
+      input.exporterId = originalTrade.exporterId;
+      input.importerId = originalTrade.importerId;
+      input.product = originalTrade.product;
+      input.quantity = Number(originalTrade.quantity);
+      input.totalAmount = Number(originalTrade.totalAmount);
+      input.currency = originalTrade.currency;
+    }
 
-    const fileBlob = new Blob([fileBytes], {
-      type: req.file?.mimetype,
-    });
+    if (originalTrade) {
+      const previousInspection = [...history]
+        .reverse()
+        .find(
+          (trade) => trade.inspectionStatus.trim().toUpperCase() !== "PENDING",
+        );
+      if (
+        input.tradeStatus.trim().toUpperCase() !== "INSPECTED" &&
+        previousInspection
+      ) {
+        input.inspectionStatus = previousInspection.inspectionStatus;
+      }
+    }
 
-    formData.append("invoice", fileBlob, req.file?.originalname);
+    if (req.file) {
+      const formData = new FormData();
+      const fileBytes = new Uint8Array(req.file.buffer.length);
+      fileBytes.set(req.file.buffer);
 
-    const { data } = await axios.post(
-      `${BACKEND_URL}/api/invoice/process`,
-      formData,
-    );
+      const fileBlob = new Blob([fileBytes], {
+        type: req.file.mimetype,
+      });
 
-    input.invoiceHash = data.invoiceHash;
-    console.log("Invoice Hash:", input.invoiceHash);
+      formData.append("invoice", fileBlob, req.file.originalname);
 
-    tradeId = randomUUID();
-    // 1. Create the trade in Supabase
-    const trade = await createTrade({
-      id: tradeId,
-      listing_id: input.listingId,
-      exporter_id: input.exporterId,
-      importer_id: input.importerId,
-      total_amount: input.totalAmount,
-      currency: input.currency,
-      quantity: input.quantity,
-      agreed_price: input.agreedPrice,
-      status: "PENDING",
-    });
+      const { data } = await axios.post(
+        `${BACKEND_URL}/api/invoice/process`,
+        formData,
+      );
 
-    // 2. Record the trade on blockchain
+      input.invoiceHash = data.invoiceHash;
+    } else if (originalTrade) {
+      input.invoiceHash = originalTrade.invoiceHash;
+    }
+
+    const product = await getProductFromListing(input.listingId);
+    if (!product) {
+      throw new Error("Product is required for the listing");
+    }
+    input.product = product;
+
+    input.recordId = randomUUID();
     const result = await recordTrade(input);
-
-    // 3. Update the trade status in Supabase to "COMPLETED"
-    await updateTradeStatus(tradeId, "COMPLETED");
 
     res.status(201).json({
       success: true,
       message: "Trade recorded successfully",
       data: {
         transactionId: input.transactionId,
+        recordId: input.recordId,
+        listingId: input.listingId,
         exporterId: input.exporterId,
         importerId: input.importerId,
-        product: input.product,
+        product: product,
         quantity: String(input.quantity),
+        totalAmount: String(input.totalAmount),
+        currency: input.currency,
         tradeStatus: input.tradeStatus,
         inspectionStatus: input.inspectionStatus,
         disputeStatus: input.disputeStatus,
@@ -105,20 +143,6 @@ export async function recordTradeController(
     });
   } catch (error) {
     console.error("Error recording trade:", error);
-
-    // Roll back trade from database if it was already created
-    if (tradeId) {
-      try {
-        try {
-          await deleteTrade(tradeId);
-          console.log("Trade rolled back successfully");
-        } catch (rollbackError) {
-          console.error("Error rolling back trade:", rollbackError);
-        }
-      } catch (rollbackError) {
-        console.error("Error rolling back trade:", rollbackError);
-      }
-    }
 
     // Delete file uploaded from supabase storage if trade recording fails
     if (req.file) {
@@ -188,37 +212,33 @@ export async function getTradeController(
       return;
     }
 
-    const trade = await getTrade(transactionId);
+    const trades = await getTradesByTransactionId(transactionId);
 
-    res.status(200).json({
-      success: true,
-      trade: {
-        transactionId: trade.transactionId,
-        exporterId: trade.exporterId,
-        importerId: trade.importerId,
-        product: trade.product,
-        quantity: trade.quantity.toString(),
-        tradeStatus: trade.tradeStatus,
-        inspectionStatus: trade.inspectionStatus,
-        disputeStatus: trade.disputeStatus,
-        settlementStatus: trade.settlementStatus,
-        expectedDelivery: trade.expectedDelivery.toString(),
-        actualDelivery: trade.actualDelivery.toString(),
-        invoiceHash: trade.invoiceHash,
-        trustScoreAfterTrade: trade.trustScoreAfterTrade.toString(),
-        timestamp: trade.timestamp.toString(),
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-
-    if (message.includes("Trade does not exist")) {
+    if (trades.length === 0) {
       res.status(404).json({
         success: false,
         message: "Trade not found",
       });
       return;
     }
+
+    const serializedTrades = trades.map((trade) => ({
+      ...trade,
+      quantity: trade.quantity.toString(),
+      totalAmount: trade.totalAmount.toString(),
+      trustScoreAfterTrade: trade.trustScoreAfterTrade.toString(),
+      expectedDelivery: trade.expectedDelivery.toString(),
+      actualDelivery: trade.actualDelivery.toString(),
+      timestamp: trade.timestamp.toString(),
+    }));
+
+    res.status(200).json({
+      success: true,
+      trades: serializedTrades,
+      trade: serializedTrades[serializedTrades.length - 1],
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
 
     console.error("Error fetching trade:", error);
 
@@ -334,11 +354,16 @@ export async function getTradesByStatusController(
       status,
       totalTrades: trades.length,
       trades: trades.map((trade) => ({
+        recordId: trade.recordId,
         transactionId: trade.transactionId,
+        listingId: trade.listingId,
         exporterId: trade.exporterId,
         importerId: trade.importerId,
         product: trade.product,
         quantity: trade.quantity.toString(),
+        totalAmount: trade.totalAmount.toString(),
+        currency: trade.currency,
+        transactionHash: trade.transactionHash,
         tradeStatus: trade.tradeStatus,
         inspectionStatus: trade.inspectionStatus,
         disputeStatus: trade.disputeStatus,
@@ -410,11 +435,16 @@ export async function getExporterTradeIdsByStatusController(
       status,
       totalTrades: trades.length,
       trades: trades.map((trade) => ({
+        recordId: trade.recordId,
         transactionId: trade.transactionId,
+        listingId: trade.listingId,
         exporterId: trade.exporterId,
         importerId: trade.importerId,
         product: trade.product,
         quantity: trade.quantity.toString(),
+        totalAmount: trade.totalAmount.toString(),
+        currency: trade.currency,
+        transactionHash: trade.transactionHash,
         tradeStatus: trade.tradeStatus,
         inspectionStatus: trade.inspectionStatus,
         disputeStatus: trade.disputeStatus,

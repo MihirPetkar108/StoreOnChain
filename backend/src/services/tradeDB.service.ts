@@ -4,6 +4,48 @@ import type {
   UpdateTradeData,
 } from "../types/tradeDB.types.js";
 
+export interface MarketplaceListing {
+  id: string;
+  product: string;
+  unitPrice: number;
+  currency: string;
+  availableQuantity: number | null;
+  exporterId: string;
+  description: string;
+}
+
+export async function getMarketplaceListings(): Promise<MarketplaceListing[]> {
+  const { data, error } = await supabase.from("listings").select("*");
+
+  if (error) {
+    throw new Error(`Failed to fetch marketplace listings: ${error.message}`);
+  }
+
+  return (data ?? [])
+    .filter(
+      (row: Record<string, unknown>) =>
+        row.status == null || String(row.status).toUpperCase() === "ACTIVE",
+    )
+    .map((row: Record<string, unknown>) => ({
+      id: String(row.id),
+      product: String(row.product_name ?? row.product ?? "Unnamed product"),
+      unitPrice: Number(row.unit_price ?? row.price ?? 0),
+      currency: String(row.currency ?? "USD"),
+      availableQuantity:
+        row.quantity_available == null &&
+        row.available_quantity == null &&
+        row.quantity == null
+          ? null
+          : Number(
+              row.quantity_available ?? row.available_quantity ?? row.quantity,
+            ),
+      exporterId: String(
+        row.exporter_id ?? row.organization_id ?? row.seller_id ?? "",
+      ),
+      description: String(row.description ?? ""),
+    }));
+}
+
 export async function createTrade(data: CreateTradeData) {
   const { data: trade, error } = await supabase
     .from("trades")
@@ -16,7 +58,6 @@ export async function createTrade(data: CreateTradeData) {
       total_amount: data.total_amount ?? null,
       currency: data.currency ?? null,
       quantity: data.quantity ?? null,
-      agreed_price: data.agreed_price ?? null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
@@ -103,4 +144,22 @@ export async function deleteTrade(tradeId: string): Promise<void> {
   if (error) {
     throw new Error(`Failed to delete trade: ${error.message}`);
   }
+}
+
+export async function getProductFromListing(
+  listingId: string,
+): Promise<string | null> {
+  const { data: listingData, error: listingError } = await supabase
+    .from("listings")
+    .select("product_name")
+    .eq("id", listingId)
+    .single();
+
+  if (listingError || !listingData) {
+    throw new Error(
+      `Listing lookup failed: ${listingError?.message ?? "No listing found"}`,
+    );
+  }
+
+  return listingData.product_name;
 }
