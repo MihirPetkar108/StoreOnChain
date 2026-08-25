@@ -70,6 +70,8 @@ export interface RecordTradePayload {
   actualDelivery: string;
   trustScoreAfterTrade: number;
   invoiceFile?: File;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
 }
 
 export interface TradesByStatusResponse {

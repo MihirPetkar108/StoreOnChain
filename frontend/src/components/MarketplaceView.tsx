@@ -45,9 +45,8 @@ export const MarketplaceView: React.FC = () => {
   );
 
   const openPurchase = (listing: MarketplaceListing) => {
-    setSelected(listing);
-    setQuantity(1);
-    setMessage(null);
+    window.history.pushState({}, "", `/marketplace/${listing.id}`);
+    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
   const totalPrice = selected ? quantity * selected.unitPrice : 0;
@@ -75,6 +74,10 @@ export const MarketplaceView: React.FC = () => {
     }
     setBuying(true);
     setMessage(null);
+    setSelected(null);
+    setDocument(null);
+    setImporterId("");
+    setQuantity(1);
     try {
       const response = await api.recordTrade({
         transactionId: crypto.randomUUID(),
@@ -100,7 +103,6 @@ export const MarketplaceView: React.FC = () => {
       setMessage(
         `Purchase recorded. Transaction ID: ${response.data?.transactionId}`,
       );
-      setSelected(null);
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "Purchase failed.");
     } finally {

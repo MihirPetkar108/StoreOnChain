@@ -3,6 +3,7 @@ import { api } from "./api/apiClient";
 import { Navbar } from "./components/Navbar";
 import { DashboardView } from "./components/DashboardView";
 import { MarketplaceView } from "./components/MarketplaceView";
+import { PurchaseView } from "./components/PurchaseView";
 import { RecordTradeView } from "./components/RecordTradeView";
 import { InvoiceToolsView } from "./components/InvoiceToolsView";
 import { TradeLedgerView } from "./components/TradeLedgerView";
@@ -10,7 +11,12 @@ import { ExporterReputationView } from "./components/ExporterReputationView";
 import { ShieldCheck } from "lucide-react";
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [activeTab, setActiveTab] = useState<string>(
+    getPurchaseListingId() ? "marketplace" : "dashboard",
+  );
+  const [purchaseListingId, setPurchaseListingId] = useState<string | null>(
+    getPurchaseListingId(),
+  );
   const [backendConnected, setBackendConnected] = useState<boolean | null>(
     null,
   );
@@ -31,8 +37,26 @@ export function App() {
     }
   };
 
+  const navigateToTab = (tab: string) => {
+    if (tab === "marketplace") {
+      window.history.pushState({}, "", "/");
+      setPurchaseListingId(null);
+    }
+    setActiveTab(tab);
+  };
+
   useEffect(() => {
     checkBackendHealth();
+  }, []);
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      const listingId = getPurchaseListingId();
+      setPurchaseListingId(listingId);
+      if (listingId) setActiveTab("marketplace");
+    };
+    window.addEventListener("popstate", handleRouteChange);
+    return () => window.removeEventListener("popstate", handleRouteChange);
   }, []);
 
   return (
@@ -40,7 +64,7 @@ export function App() {
       {/* Navigation Bar */}
       <Navbar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navigateToTab}
         backendConnected={backendConnected}
         checkingHealth={checkingHealth}
         onRefreshHealth={checkBackendHealth}
@@ -58,7 +82,11 @@ export function App() {
 
         {activeTab === "record" && <RecordTradeView />}
 
-        {activeTab === "marketplace" && <MarketplaceView />}
+        {activeTab === "marketplace" && purchaseListingId ? (
+          <PurchaseView listingId={purchaseListingId} />
+        ) : activeTab === "marketplace" ? (
+          <MarketplaceView />
+        ) : null}
 
         {activeTab === "invoice" && <InvoiceToolsView />}
 
@@ -80,6 +108,11 @@ export function App() {
       </footer>
     </div>
   );
+}
+
+function getPurchaseListingId(): string | null {
+  const match = window.location.pathname.match(/^\/marketplace\/([^/]+)$/);
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 export default App;

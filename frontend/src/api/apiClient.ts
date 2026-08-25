@@ -150,6 +150,12 @@ export const api = {
     if (payload.invoiceFile) {
       formData.append("invoice", payload.invoiceFile);
     }
+    if (payload.razorpayOrderId) {
+      formData.append("razorpayOrderId", payload.razorpayOrderId);
+    }
+    if (payload.razorpayPaymentId) {
+      formData.append("razorpayPaymentId", payload.razorpayPaymentId);
+    }
     if (payload.transactionId) {
       formData.append("transactionId", payload.transactionId);
     }
