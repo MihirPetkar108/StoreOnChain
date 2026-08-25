@@ -63,11 +63,18 @@ export interface ExporterReputation {
 export interface RecordTradeRequest {
   transactionId: string;
 
+  // Database trade fields
+  listingId: string;
   exporterId: string;
   importerId: string;
 
-  product: string;
+  totalAmount: number;
+  currency: string;
   quantity: number;
+  agreedPrice: number;
+
+  // Blockchain trade fields
+  product: string;
 
   tradeStatus: string;
   inspectionStatus: string;

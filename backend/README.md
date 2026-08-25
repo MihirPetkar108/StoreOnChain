@@ -40,6 +40,25 @@ http://localhost:3000
 | `GET`  | `/api/exporters/:exporterId/trades?status=<status>` | `exporterId` path parameter and required `status` query parameter. Intended to return the exporter's trades filtered by status. |
 | `GET`  | `/api/exporters/:exporterId/reputation`             | `exporterId` path parameter. Returns the exporter's reputation metrics.                                                         |
 
+### Escrows
+
+The following escrow endpoints are planned. They are not currently registered in the backend application.
+
+| Method  | Path                                      | Purpose          |
+| ------- | ----------------------------------------- | ---------------- |
+| `POST`  | `/api/escrows`                            | Create escrow    |
+| `GET`   | `/api/escrows/:escrowId`                  | Get escrow       |
+| `GET`   | `/api/trades/:tradeId/escrow`             | Get trade escrow |
+| `PATCH` | `/api/escrows/:escrowId/awaiting-payment` | Await payment    |
+| `PATCH` | `/api/escrows/:escrowId/fund`             | Fund             |
+| `PATCH` | `/api/escrows/:escrowId/in-shipment`      | Shipment started |
+| `PATCH` | `/api/escrows/:escrowId/delivered`        | Delivery         |
+| `PATCH` | `/api/escrows/:escrowId/inspection`       | Inspection       |
+| `PATCH` | `/api/escrows/:escrowId/dispute`          | Dispute          |
+| `PATCH` | `/api/escrows/:escrowId/release`          | Release          |
+| `PATCH` | `/api/escrows/:escrowId/refund`           | Refund           |
+| `PATCH` | `/api/escrows/:escrowId/cancel`           | Cancel           |
+
 ## Notes
 
 - Invoice upload endpoints use `multipart/form-data` and Multer for file handling.

@@ -5,6 +5,7 @@ import cors from "cors";
 import healthRoutes from "./routes/health.routes.js";
 import tradeRoutes from "./routes/trade.routes.js";
 import invoiceRoutes from "./routes/invoice.routes.js";
+import escrowRoutes from "./routes/escrow.routes.js";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use("/api", healthRoutes);
 app.use("/api", tradeRoutes);
 app.use("/api", invoiceRoutes);
+app.use("/api/escrows", escrowRoutes);
 
 // Global Error Handler Middleware
 app.use(

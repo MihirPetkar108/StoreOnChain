@@ -10,6 +10,12 @@ import {
 import type { RecordTradeRequest } from "../types/trade.types.js";
 import axios from "axios";
 import { deleteInvoice } from "../services/storage.service.js";
+import {
+  createTrade,
+  deleteTrade,
+  updateTradeStatus,
+} from "../services/tradeDB.service.js";
+import { randomUUID } from "node:crypto";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
 
@@ -23,6 +29,7 @@ export async function recordTradeController(
   res: Response,
 ): Promise<void> {
   const input: RecordTradeRequest = req.body as RecordTradeRequest;
+  let tradeId: string | null = null;
   try {
     if (!req.file) {
       res.status(400).json({
@@ -55,7 +62,25 @@ export async function recordTradeController(
     input.invoiceHash = data.invoiceHash;
     console.log("Invoice Hash:", input.invoiceHash);
 
+    tradeId = randomUUID();
+    // 1. Create the trade in Supabase
+    const trade = await createTrade({
+      id: tradeId,
+      listing_id: input.listingId,
+      exporter_id: input.exporterId,
+      importer_id: input.importerId,
+      total_amount: input.totalAmount,
+      currency: input.currency,
+      quantity: input.quantity,
+      agreed_price: input.agreedPrice,
+      status: "PENDING",
+    });
+
+    // 2. Record the trade on blockchain
     const result = await recordTrade(input);
+
+    // 3. Update the trade status in Supabase to "COMPLETED"
+    await updateTradeStatus(tradeId, "COMPLETED");
 
     res.status(201).json({
       success: true,
@@ -80,6 +105,20 @@ export async function recordTradeController(
     });
   } catch (error) {
     console.error("Error recording trade:", error);
+
+    // Roll back trade from database if it was already created
+    if (tradeId) {
+      try {
+        try {
+          await deleteTrade(tradeId);
+          console.log("Trade rolled back successfully");
+        } catch (rollbackError) {
+          console.error("Error rolling back trade:", rollbackError);
+        }
+      } catch (rollbackError) {
+        console.error("Error rolling back trade:", rollbackError);
+      }
+    }
 
     // Delete file uploaded from supabase storage if trade recording fails
     if (req.file) {
