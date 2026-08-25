@@ -11,7 +11,13 @@ import {
 import type { RecordTradeRequest } from "../types/trade.types.js";
 import axios from "axios";
 import { deleteInvoice } from "../services/storage.service.js";
-import { getProductFromListing } from "../services/tradeDB.service.js";
+import {
+  createTrade,
+  deleteTrade,
+  getProductFromListing,
+} from "../services/tradeDB.service.js";
+import { createEscrow, deleteEscrow } from "../services/escrow.service.js";
+import { createPayment, deletePayment } from "../services/paymentDB.service.js";
 import { randomUUID } from "node:crypto";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
@@ -25,6 +31,9 @@ export async function recordTradeController(
   req: Request,
   res: Response,
 ): Promise<void> {
+  let databaseTradeCreated = false;
+  let escrowId: string | null = null;
+  let paymentId: string | null = null;
   const body = req.body as Record<string, unknown>;
   const input: RecordTradeRequest = {
     ...body,
@@ -114,6 +123,41 @@ export async function recordTradeController(
     input.product = product;
 
     input.recordId = randomUUID();
+    await createTrade({
+      id: input.recordId,
+      listing_id: input.listingId,
+      exporter_id: input.exporterId,
+      importer_id: input.importerId,
+      status: input.tradeStatus,
+      total_amount: input.totalAmount,
+      currency: input.currency,
+      quantity: input.quantity,
+    });
+    databaseTradeCreated = true;
+
+    const razorpayOrderId = String(body.razorpayOrderId ?? "").trim();
+    const razorpayPaymentId = String(body.razorpayPaymentId ?? "").trim();
+    if (razorpayOrderId && razorpayPaymentId) {
+      const escrow = await createEscrow(
+        input.recordId,
+        String(input.totalAmount),
+        input.currency,
+        "RAZORPAY",
+      );
+      escrowId = escrow.id;
+      const payment = await createPayment({
+        escrow_id: escrow.id,
+        trade_id: input.recordId,
+        amount: Number(input.totalAmount),
+        currency: input.currency,
+        method: "RAZORPAY",
+        status: "SUCCESS",
+        provider_order_id: razorpayOrderId,
+        provider_payment_id: razorpayPaymentId,
+      });
+      paymentId = payment.id;
+    }
+
     const result = await recordTrade(input);
 
     res.status(201).json({
@@ -151,6 +195,28 @@ export async function recordTradeController(
         console.log("Invoice file deleted successfully");
       } catch (deleteError) {
         console.error("Error deleting invoice file:", deleteError);
+      }
+    }
+
+    if (paymentId) {
+      try {
+        await deletePayment(paymentId);
+      } catch (cleanupError) {
+        console.error("Error deleting payment during rollback:", cleanupError);
+      }
+    }
+    if (escrowId) {
+      try {
+        await deleteEscrow(escrowId);
+      } catch (cleanupError) {
+        console.error("Error deleting escrow during rollback:", cleanupError);
+      }
+    }
+    if (databaseTradeCreated) {
+      try {
+        await deleteTrade(input.recordId);
+      } catch (cleanupError) {
+        console.error("Error deleting trade during rollback:", cleanupError);
       }
     }
 

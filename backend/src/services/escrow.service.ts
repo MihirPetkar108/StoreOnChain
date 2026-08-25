@@ -148,6 +148,13 @@ export async function createEscrow(
   return mapEscrow(data);
 }
 
+export async function deleteEscrow(escrowId: string): Promise<void> {
+  const { error } = await supabase.from("escrows").delete().eq("id", escrowId);
+  if (error) {
+    throw new Error(`Failed to delete escrow: ${error.message}`);
+  }
+}
+
 // ============================================================
 // GET ESCROW BY ID
 // ============================================================
