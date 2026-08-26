@@ -1,8 +1,20 @@
 import { supabase } from "../config/supabase.config.js";
 import type {
   CreateTradeData,
+  TradeStatus,
   UpdateTradeData,
 } from "../types/tradeDB.types.js";
+import { DB_TRADE_STATUSES } from "../types/tradeDB.types.js";
+
+function normalizeTradeStatus(status: string): TradeStatus {
+  const normalized = status.trim().toUpperCase() as TradeStatus;
+  if (!DB_TRADE_STATUSES.includes(normalized)) {
+    throw new Error(
+      `Invalid trade status: ${status}. Allowed values: ${DB_TRADE_STATUSES.join(", ")}`,
+    );
+  }
+  return normalized;
+}
 
 export interface MarketplaceListing {
   id: string;
@@ -47,6 +59,7 @@ export async function getMarketplaceListings(): Promise<MarketplaceListing[]> {
 }
 
 export async function createTrade(data: CreateTradeData) {
+  const status = data.status ? normalizeTradeStatus(data.status) : null;
   const { data: trade, error } = await supabase
     .from("trades")
     .insert({
@@ -54,7 +67,7 @@ export async function createTrade(data: CreateTradeData) {
       listing_id: data.listing_id ?? null,
       exporter_id: data.exporter_id ?? null,
       importer_id: data.importer_id ?? null,
-      status: data.status ?? null,
+      status,
       total_amount: data.total_amount ?? null,
       currency: data.currency ?? null,
       quantity: data.quantity ?? null,
@@ -133,7 +146,7 @@ export async function getTradesForImporter(importerId: string) {
 
 export async function updateTradeStatus(tradeId: string, status: string) {
   return updateTrade(tradeId, {
-    status,
+    status: normalizeTradeStatus(status),
     updated_at: new Date().toISOString(),
   });
 }

@@ -1,3 +1,13 @@
+export type TradeStatus = "CREATED" | "CANCELLED";
+
+export const DB_TRADE_STATUSES: TradeStatus[] = ["CREATED", "CANCELLED"];
+
+export function isDbPersistedTradeStatus(status: string): boolean {
+  return DB_TRADE_STATUSES.includes(
+    status.trim().toUpperCase() as TradeStatus,
+  );
+}
+
 export interface CreateTradeData {
   id: string;
   listing_id?: string | null;

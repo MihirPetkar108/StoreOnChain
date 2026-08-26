@@ -10,13 +10,14 @@ import {
   fromBlockchainAmount,
 } from "../services/tradeLedger.service.js";
 import type { RecordTradeRequest } from "../types/trade.types.js";
-import axios from "axios";
-import { deleteInvoice } from "../services/storage.service.js";
+import { hashInvoiceData } from "../services/hashing.service.js";
+import { deleteInvoice, uploadInvoice } from "../services/storage.service.js";
 import {
   createTrade,
   deleteTrade,
   getProductFromListing,
 } from "../services/tradeDB.service.js";
+import { isDbPersistedTradeStatus } from "../types/tradeDB.types.js";
 import {
   createEscrow,
   deleteEscrow,
@@ -29,12 +30,8 @@ import {
   deletePayment,
   getLatestPaymentForTrades,
 } from "../services/paymentDB.service.js";
-import {
-  refundRazorpayPayment,
-} from "../services/payment.service.js";
+import { refundRazorpayPayment } from "../services/payment.service.js";
 import { randomUUID } from "node:crypto";
-
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
 
 // ============================================================
 // RECORD TRADE
@@ -127,22 +124,9 @@ export async function recordTradeController(
     }
 
     if (req.file) {
-      const formData = new FormData();
-      const fileBytes = new Uint8Array(req.file.buffer.length);
-      fileBytes.set(req.file.buffer);
-
-      const fileBlob = new Blob([fileBytes], {
-        type: req.file.mimetype,
-      });
-
-      formData.append("invoice", fileBlob, req.file.originalname);
-
-      const { data } = await axios.post(
-        `${BACKEND_URL}/api/invoice/process`,
-        formData,
-      );
-
-      input.invoiceHash = data.invoiceHash;
+      const invoiceHash = hashInvoiceData(req.file.buffer);
+      await uploadInvoice(req.file.buffer, invoiceHash, req.file.mimetype);
+      input.invoiceHash = invoiceHash;
     } else if (originalTrade) {
       input.invoiceHash = originalTrade.invoiceHash;
     }
@@ -158,17 +142,19 @@ export async function recordTradeController(
     input.recordId = randomUUID();
     const razorpayOrderId = String(body.razorpayOrderId ?? "").trim();
     razorpayPaymentId = String(body.razorpayPaymentId ?? "").trim();
-    await createTrade({
-      id: input.recordId,
-      listing_id: input.listingId,
-      exporter_id: input.exporterId,
-      importer_id: input.importerId,
-      status: input.tradeStatus,
-      total_amount: input.totalAmount,
-      currency: input.currency,
-      quantity: input.quantity,
-    });
-    databaseTradeCreated = true;
+    if (isDbPersistedTradeStatus(input.tradeStatus)) {
+      await createTrade({
+        id: input.recordId,
+        listing_id: input.listingId,
+        exporter_id: input.exporterId,
+        importer_id: input.importerId,
+        status: input.tradeStatus,
+        total_amount: input.totalAmount,
+        currency: input.currency,
+        quantity: input.quantity,
+      });
+      databaseTradeCreated = true;
+    }
 
     if (razorpayOrderId && razorpayPaymentId) {
       const escrow = await createEscrow(
@@ -284,21 +270,6 @@ export async function recordTradeController(
       }
     }
 
-    // Handle errors coming from the invoice processing API
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status;
-      const message = error.response?.data?.message;
-
-      if (status === 409 || status === 400) {
-        res.status(status).json({
-          success: false,
-          message: message || "Invalid request or file format",
-        });
-
-        return;
-      }
-    }
-
     const message = error instanceof Error ? error.message : "Unknown error";
 
     const validationErrorMessages = [
@@ -310,6 +281,15 @@ export async function recordTradeController(
       "Only PDF files are allowed",
       "not supported",
     ];
+
+    if (message === "Invoice already exists") {
+      res.status(409).json({
+        success: false,
+        message,
+      });
+
+      return;
+    }
 
     const isValidationError = validationErrorMessages.some((text) =>
       message.includes(text),

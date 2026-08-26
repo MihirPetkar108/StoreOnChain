@@ -1,64 +1,23 @@
 import type { Request, Response } from "express";
 
 import { hashInvoiceData } from "../services/hashing.service.js";
-import { getInvoice, uploadInvoice } from "../services/storage.service.js";
-import { getTrade } from "../services/tradeLedger.service.js";
+import { getInvoice } from "../services/storage.service.js";
+import { getTradesByTransactionId } from "../services/tradeLedger.service.js";
+import type { Trade } from "../types/trade.types.js";
 
-// ============================================================
-// PROCESS INVOICE
-// POST /api/invoices/process
-//
-// Flow:
-//
-// Invoice
-//    ↓
-// Hashing the buffer and blockchain recording will be connected later.
-// ============================================================
+async function getLatestTradeWithInvoice(
+  transactionId: string,
+): Promise<Trade | undefined> {
+  const trades = await getTradesByTransactionId(transactionId);
 
-export async function processInvoiceController(
-  req: Request,
-  res: Response,
-): Promise<void> {
-  try {
-    // --------------------------------------------------------
-    // Check whether a file was uploaded
-    // --------------------------------------------------------
-
-    if (!req.file) {
-      res.status(400).json({
-        success: false,
-        message: "Invoice file is required",
-      });
-
-      return;
+  for (let index = trades.length - 1; index >= 0; index -= 1) {
+    const trade = trades[index];
+    if (trade && trade.invoiceHash.trim().length > 0) {
+      return trade;
     }
-
-    const invoiceHash = hashInvoiceData(req.file.buffer);
-
-    await uploadInvoice(req.file.buffer, invoiceHash, req.file.mimetype);
-
-    // --------------------------------------------------------
-    // Return result
-    // --------------------------------------------------------
-
-    res.status(200).json({
-      success: true,
-      message: "Invoice processed successfully",
-      invoiceHash,
-    });
-  } catch (error) {
-    console.error("Error processing invoice:", error);
-
-    const message =
-      error instanceof Error ? error.message : "Failed to process invoice";
-
-    const statusCode = message === "Invoice already exists" ? 409 : 500;
-
-    res.status(statusCode).json({
-      success: false,
-      message,
-    });
   }
+
+  return undefined;
 }
 
 export async function verifyInvoiceController(
@@ -70,7 +29,9 @@ export async function verifyInvoiceController(
     // Check invoice file and transaction ID
     // --------------------------------------------------------
 
-    const { transactionId } = (req.body ?? {}) as { transactionId?: string };
+    const transactionId = String(
+      req.body?.transactionId ?? req.query.transactionId ?? "",
+    ).trim();
 
     if (!transactionId || !req.file) {
       res.status(400).json({
@@ -90,11 +51,11 @@ export async function verifyInvoiceController(
     // Get trade from blockchain
     // --------------------------------------------------------
 
-    const trade = await getTrade(transactionId);
+    const trade = await getLatestTradeWithInvoice(transactionId);
     if (!trade) {
       res.status(404).json({
         success: false,
-        message: "Trade not found",
+        message: `Trade ${transactionId} does not exist`,
       });
 
       return;
@@ -122,6 +83,19 @@ export async function verifyInvoiceController(
     const message =
       error instanceof Error ? error.message : "Failed to verify invoice";
 
+    if (message.includes("Trade does not exist")) {
+      const transactionId = String(
+        req.body?.transactionId ?? req.query.transactionId ?? "",
+      ).trim();
+
+      res.status(404).json({
+        success: false,
+        message: `Trade ${transactionId} does not exist`,
+      });
+
+      return;
+    }
+
     res.status(500).json({
       success: false,
       message,
@@ -143,11 +117,11 @@ export async function getInvoiceController(
       return;
     }
 
-    const trade = await getTrade(String(transactionId));
+    const trade = await getLatestTradeWithInvoice(transactionId);
     if (!trade) {
       res.status(404).json({
         success: false,
-        message: "Trade not found",
+        message: `Trade ${transactionId} does not exist`,
       });
       return;
     }
@@ -170,6 +144,15 @@ export async function getInvoiceController(
       res.status(404).json({
         success: false,
         message: `Trade ${transactionId} does not exist`,
+      });
+
+      return;
+    }
+
+    if (message.includes("Invoice file not found")) {
+      res.status(404).json({
+        success: false,
+        message,
       });
 
       return;

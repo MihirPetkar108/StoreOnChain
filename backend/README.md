@@ -20,9 +20,8 @@ http://localhost:3000
 
 | Method | Path                    | Request                                                                                                                                                                             |
 | ------ | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/api/invoice/process`  | `multipart/form-data` with the invoice file in the `invoice` field. Processes and stores the invoice, then returns its hash.                                                        |
-| `GET`  | `/api/invoice/verify`   | `multipart/form-data` with the invoice file in the `verify` field and `transactionId` in the request body. Compares the uploaded invoice hash with the hash recorded for the trade. |
-| `GET`  | `/api/invoice/document` | Request body containing `transactionId`. Returns the stored invoice as a downloadable binary document.                                                                              |
+| `POST` | `/api/invoice/verify`   | `multipart/form-data` with the invoice file in the `verify` field and `transactionId` in the request body. Compares the uploaded invoice hash with the hash recorded for the trade. |
+| `GET`  | `/api/invoice/document` | Query parameter `transactionId`. Returns the stored invoice as a downloadable binary document.                                                                                      |
 
 ### Trades
 

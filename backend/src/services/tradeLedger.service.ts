@@ -264,7 +264,7 @@ export async function getTradesByTransactionId(
   const trades = await tradeLedgerContract.getFunction(
     "getTradesByTransactionId",
   )(transactionId);
-  return Promise.all(trades.map((trade: any) => getTrade(trade.recordId)));
+  return trades.map((trade: any) => mapTrade(trade));
 }
 
 // ============================================================
