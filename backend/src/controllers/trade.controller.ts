@@ -7,6 +7,7 @@ import {
   getTradesByTransactionId,
   getTradesByStatus,
   getTradesForExporterByStatus,
+  fromBlockchainAmount,
 } from "../services/tradeLedger.service.js";
 import type { RecordTradeRequest } from "../types/trade.types.js";
 import axios from "axios";
@@ -16,8 +17,21 @@ import {
   deleteTrade,
   getProductFromListing,
 } from "../services/tradeDB.service.js";
-import { createEscrow, deleteEscrow } from "../services/escrow.service.js";
-import { createPayment, deletePayment } from "../services/paymentDB.service.js";
+import {
+  createEscrow,
+  deleteEscrow,
+  fundEscrow,
+  markAwaitingPayment,
+  settleEscrow,
+} from "../services/escrow.service.js";
+import {
+  createPayment,
+  deletePayment,
+  getLatestPaymentForTrades,
+} from "../services/paymentDB.service.js";
+import {
+  refundRazorpayPayment,
+} from "../services/payment.service.js";
 import { randomUUID } from "node:crypto";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
@@ -34,6 +48,7 @@ export async function recordTradeController(
   let databaseTradeCreated = false;
   let escrowId: string | null = null;
   let paymentId: string | null = null;
+  let razorpayPaymentId = "";
   const body = req.body as Record<string, unknown>;
   const input: RecordTradeRequest = {
     ...body,
@@ -73,11 +88,27 @@ export async function recordTradeController(
     }
 
     if (originalTrade) {
+      const normalizedTradeStatus = input.tradeStatus.trim().toUpperCase();
+      const normalizedSettlementStatus = input.settlementStatus
+        .trim()
+        .toUpperCase();
+      if (
+        (normalizedTradeStatus === "COMPLETED" &&
+          normalizedSettlementStatus === "REFUNDED") ||
+        (normalizedTradeStatus === "CANCELLED" &&
+          normalizedSettlementStatus === "SETTLED")
+      ) {
+        throw new Error(
+          "Settlement status is not valid for the selected trade status",
+        );
+      }
+
       input.exporterId = originalTrade.exporterId;
       input.importerId = originalTrade.importerId;
+      input.listingId = originalTrade.listingId;
       input.product = originalTrade.product;
       input.quantity = Number(originalTrade.quantity);
-      input.totalAmount = Number(originalTrade.totalAmount);
+      input.totalAmount = fromBlockchainAmount(originalTrade.totalAmount);
       input.currency = originalTrade.currency;
     }
 
@@ -116,13 +147,17 @@ export async function recordTradeController(
       input.invoiceHash = originalTrade.invoiceHash;
     }
 
-    const product = await getProductFromListing(input.listingId);
-    if (!product) {
-      throw new Error("Product is required for the listing");
+    if (!originalTrade) {
+      const product = await getProductFromListing(input.listingId);
+      if (!product) {
+        throw new Error("Product is required for the listing");
+      }
+      input.product = product;
     }
-    input.product = product;
 
     input.recordId = randomUUID();
+    const razorpayOrderId = String(body.razorpayOrderId ?? "").trim();
+    razorpayPaymentId = String(body.razorpayPaymentId ?? "").trim();
     await createTrade({
       id: input.recordId,
       listing_id: input.listingId,
@@ -135,8 +170,6 @@ export async function recordTradeController(
     });
     databaseTradeCreated = true;
 
-    const razorpayOrderId = String(body.razorpayOrderId ?? "").trim();
-    const razorpayPaymentId = String(body.razorpayPaymentId ?? "").trim();
     if (razorpayOrderId && razorpayPaymentId) {
       const escrow = await createEscrow(
         input.recordId,
@@ -156,9 +189,29 @@ export async function recordTradeController(
         provider_payment_id: razorpayPaymentId,
       });
       paymentId = payment.id;
+      await markAwaitingPayment(escrow.id);
+      await fundEscrow(escrow.id);
     }
 
     const result = await recordTrade(input);
+
+    if (originalTrade) {
+      const normalizedSettlementStatus = input.settlementStatus
+        .trim()
+        .toUpperCase();
+      const payment = await getLatestPaymentForTrades(
+        history.map((trade) => trade.recordId),
+      );
+      if (payment && normalizedSettlementStatus === "REFUNDED") {
+        await refundRazorpayPayment(
+          payment.provider_payment_id,
+          Math.round(Number(payment.amount) * 100),
+        );
+        await settleEscrow(payment.escrow_id, "REFUNDED");
+      } else if (payment && normalizedSettlementStatus === "SETTLED") {
+        await settleEscrow(payment.escrow_id, "RELEASED");
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -169,7 +222,7 @@ export async function recordTradeController(
         listingId: input.listingId,
         exporterId: input.exporterId,
         importerId: input.importerId,
-        product: product,
+        product: input.product,
         quantity: String(input.quantity),
         totalAmount: String(input.totalAmount),
         currency: input.currency,
@@ -187,6 +240,17 @@ export async function recordTradeController(
     });
   } catch (error) {
     console.error("Error recording trade:", error);
+
+    if (razorpayPaymentId) {
+      try {
+        await refundRazorpayPayment(
+          razorpayPaymentId,
+          Math.round(Number(input.totalAmount) * 100),
+        );
+      } catch (refundError) {
+        console.error("Error refunding Razorpay payment:", refundError);
+      }
+    }
 
     // Delete file uploaded from supabase storage if trade recording fails
     if (req.file) {

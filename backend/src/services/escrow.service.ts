@@ -1,4 +1,9 @@
 import { supabase } from "../config/supabase.config.js";
+import {
+  getInboundPaymentByEscrowId,
+  markInboundPaymentStatusByEscrowId,
+  recordEscrowSettlementPayment,
+} from "./paymentDB.service.js";
 import type {
   Escrow,
   EscrowStatus,
@@ -155,6 +160,84 @@ export async function deleteEscrow(escrowId: string): Promise<void> {
   }
 }
 
+async function syncPaymentForEscrowSettlement(
+  escrow: Escrow,
+  status: "RELEASED" | "REFUNDED",
+): Promise<void> {
+  const inboundPayment = await getInboundPaymentByEscrowId(escrow.id);
+  const amount = Number(inboundPayment?.amount ?? escrow.amount);
+  const method =
+    (inboundPayment?.method as PaymentMethod | undefined) ??
+    escrow.paymentMethod ??
+    "RAZORPAY";
+
+  await recordEscrowSettlementPayment({
+    escrowId: escrow.id,
+    tradeId: escrow.tradeId,
+    amount,
+    currency: escrow.currency,
+    method,
+    kind: status,
+    providerPaymentId: inboundPayment?.provider_payment_id ?? null,
+  });
+}
+
+export async function settleEscrow(
+  escrowId: string,
+  status: "RELEASED" | "REFUNDED",
+): Promise<Escrow> {
+  const existing = await getEscrow(escrowId);
+
+  if (existing.status === status) {
+    await syncPaymentForEscrowSettlement(existing, status);
+    return existing;
+  }
+
+  if (
+    existing.status === "RELEASED" ||
+    existing.status === "REFUNDED" ||
+    existing.status === "CANCELLED"
+  ) {
+    throw new Error(`Escrow is already settled with status ${existing.status}`);
+  }
+
+  const update: Record<string, unknown> = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
+  update[status === "RELEASED" ? "released_at" : "refunded_at"] =
+    new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("escrows")
+    .update(update)
+    .eq("id", escrowId)
+    .eq("status", existing.status)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to settle escrow: ${error.message}`);
+  }
+
+  let settled = data ? mapEscrow(data) : null;
+
+  if (!settled) {
+    const refreshed = await getEscrow(escrowId);
+    if (refreshed.status === status) {
+      settled = refreshed;
+    } else {
+      throw new Error(
+        `Failed to settle escrow: escrow changed to ${refreshed.status}`,
+      );
+    }
+  }
+
+  await syncPaymentForEscrowSettlement(settled, status);
+
+  return settled;
+}
+
 // ============================================================
 // GET ESCROW BY ID
 // ============================================================
@@ -265,6 +348,14 @@ export async function transitionEscrow(
         error?.message ?? "Escrow may have changed state"
       }`,
     );
+  }
+
+  if (nextStatus === "RELEASED" || nextStatus === "REFUNDED") {
+    await syncPaymentForEscrowSettlement(mapEscrow(data), nextStatus);
+  }
+
+  if (nextStatus === "FUNDED") {
+    await markInboundPaymentStatusByEscrowId(escrowId, "SUCCESS");
   }
 
   return mapEscrow(data);

@@ -56,3 +56,10 @@ export const verifyRazorpayPayment = ({
 export const getRazorpayPayment = async (paymentId: string) => {
   return razorpay.payments.fetch(paymentId);
 };
+
+export const refundRazorpayPayment = async (
+  paymentId: string,
+  amount?: number,
+) => {
+  return razorpay.payments.refund(paymentId, amount ? { amount } : {});
+};

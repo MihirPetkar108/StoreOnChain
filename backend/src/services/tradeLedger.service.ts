@@ -59,6 +59,21 @@ function dateToUnixTimestamp(date: string): bigint {
   return BigInt(timestamp);
 }
 
+function toBlockchainAmount(value: number): bigint {
+  const amount = String(value);
+  if (!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(amount)) {
+    throw new Error(
+      "totalAmount must be a non-negative amount with up to 2 decimals",
+    );
+  }
+
+  return ethers.parseUnits(amount, 2);
+}
+
+export function fromBlockchainAmount(value: bigint): number {
+  return Number(ethers.formatUnits(value, 2));
+}
+
 // ============================================================
 // RECORD TRADE
 // ============================================================
@@ -133,7 +148,7 @@ export async function recordTrade(input: RecordTradeRequest): Promise<{
         input.importerId,
         input.product,
         BigInt(input.quantity),
-        BigInt(input.totalAmount),
+        toBlockchainAmount(input.totalAmount),
         input.currency,
         input.tradeStatus,
         input.inspectionStatus,
