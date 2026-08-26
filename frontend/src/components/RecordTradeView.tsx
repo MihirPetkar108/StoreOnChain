@@ -24,7 +24,6 @@ export const RecordTradeView: React.FC = () => {
   const [expectedDelivery, setExpectedDelivery] = useState("2026-09-15");
   const [actualDelivery, setActualDelivery] = useState("2026-09-14");
 
-
   const normalizedTradeStatus = tradeStatus.trim().toUpperCase();
   const showInspectionStatus = normalizedTradeStatus === "INSPECTED";
   const showDisputeStatus = normalizedTradeStatus === "DISPUTED";
@@ -220,9 +219,14 @@ export const RecordTradeView: React.FC = () => {
               >
                 <option value="PENDING">PENDING</option>
                 {normalizedTradeStatus === "COMPLETED" ? (
-                  <option value="SETTLED">SETTLED</option>
+                  <>
+                    <option value="SETTLED">SETTLED</option>
+                  </>
                 ) : (
-                  <option value="REFUNDED">REFUNDED</option>
+                  <>
+                    <option value="REFUNDED">REFUNDED</option>
+                    <option value="PARTIAL">PARTIAL</option>
+                  </>
                 )}
               </select>
             </div>
@@ -257,7 +261,6 @@ export const RecordTradeView: React.FC = () => {
               />
             </div>
           )}
-
         </div>
         {/* Form Action */}
         <div className="pt-4 border-t border-slate-800 flex items-center justify-end">

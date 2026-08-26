@@ -169,6 +169,8 @@ export const TradeLedgerView: React.FC = () => {
         return "bg-rose-500/10 text-rose-400 border-rose-500/30";
       case "INSPECTED":
         return "bg-cyan-500/10 text-cyan-400 border-cyan-500/30";
+      case "PARTIAL":
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/30";
       default:
         return "bg-amber-500/10 text-amber-400 border-amber-500/30";
     }

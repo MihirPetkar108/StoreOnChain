@@ -76,7 +76,7 @@ export const PurchaseView: React.FC<PurchaseViewProps> = ({ listingId }) => {
       .finally(() => setLoading(false));
   }, [listingId]);
 
-  const totalPrice = listing ? quantity * listing.unitPrice : 0;
+  const totalPrice = listing ? Math.round(quantity * listing.unitPrice * 100) / 100 : 0;
 
   const goBack = () => {
     window.history.pushState({}, "", "/");
