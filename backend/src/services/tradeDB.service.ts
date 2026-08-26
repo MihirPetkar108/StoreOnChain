@@ -60,6 +60,11 @@ export async function getMarketplaceListings(): Promise<MarketplaceListing[]> {
 
 export async function createTrade(data: CreateTradeData) {
   const status = data.status ? normalizeTradeStatus(data.status) : null;
+  // Round the total amount to 2 decimal places for currency precision
+  const roundedTotalAmount = data.total_amount != null
+    ? Math.round(Number(data.total_amount) * 100) / 100
+    : null;
+
   const { data: trade, error } = await supabase
     .from("trades")
     .insert({
@@ -68,7 +73,7 @@ export async function createTrade(data: CreateTradeData) {
       exporter_id: data.exporter_id ?? null,
       importer_id: data.importer_id ?? null,
       status,
-      total_amount: data.total_amount ?? null,
+      total_amount: roundedTotalAmount,
       currency: data.currency ?? null,
       quantity: data.quantity ?? null,
       created_at: new Date().toISOString(),

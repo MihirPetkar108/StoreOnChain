@@ -90,11 +90,12 @@ export async function recordTradeController(
       const normalizedSettlementStatus = input.settlementStatus
         .trim()
         .toUpperCase();
+      // Only invalid combination: CANCELLED + SETTLED
+      // CANCELLED trades should have REFUNDED or PARTIAL settlement status
+      // COMPLETED trades should have SETTLED or REFUNDED settlement status
       if (
-        (normalizedTradeStatus === "COMPLETED" &&
-          normalizedSettlementStatus === "REFUNDED") ||
-        (normalizedTradeStatus === "CANCELLED" &&
-          normalizedSettlementStatus === "SETTLED")
+        normalizedTradeStatus === "CANCELLED" &&
+        normalizedSettlementStatus === "SETTLED"
       ) {
         throw new Error(
           "Settlement status is not valid for the selected trade status",

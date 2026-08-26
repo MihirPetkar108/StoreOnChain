@@ -42,9 +42,15 @@ function isSettlementOrderId(orderId: string | null | undefined): boolean {
 }
 
 export async function createPayment(data: CreatePaymentData) {
+  // Round the amount to 2 decimal places for currency precision
+  const roundedAmount = Math.round(data.amount * 100) / 100;
+
   const { data: payment, error } = await supabase
     .from("payments")
-    .insert(data)
+    .insert({
+      ...data,
+      amount: roundedAmount,
+    })
     .select()
     .single();
 

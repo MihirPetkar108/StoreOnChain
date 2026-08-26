@@ -116,13 +116,21 @@ export async function createEscrow(
   // Escrow amount MUST match the locked trade amount.
   //
   // The importer cannot change this amount.
+  // Use numeric comparison with tolerance for floating point precision
   // ----------------------------------------------------------
 
-  if (String(trade.total_amount) !== String(amount)) {
+  const tradeAmount = Number(trade.total_amount);
+  const escrowAmount = Number(amount);
+  const tolerance = 0.01; // 1 cent tolerance for currency amounts
+
+  if (Math.abs(tradeAmount - escrowAmount) > tolerance) {
     throw new Error("Escrow amount must match the locked trade amount");
   }
 
-  if (String(trade.currency) !== currency) {
+  // Round the amount to 2 decimal places for consistency
+  const roundedAmount = Math.round(escrowAmount * 100) / 100;
+
+  if (String(trade.currency) !== String(currency)) {
     throw new Error("Escrow currency must match the trade currency");
   }
 
@@ -134,7 +142,7 @@ export async function createEscrow(
     .from("escrows")
     .insert({
       trade_id: tradeId,
-      amount,
+      amount: roundedAmount,
       currency,
       payment_method: paymentMethod ?? null,
       status: "CREATED",
