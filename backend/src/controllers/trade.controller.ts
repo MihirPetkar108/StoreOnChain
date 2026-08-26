@@ -12,6 +12,7 @@ import {
 import type { RecordTradeRequest } from "../types/trade.types.js";
 import { hashInvoiceData } from "../services/hashing.service.js";
 import { deleteInvoice, uploadInvoice } from "../services/storage.service.js";
+import { calculateTrustScore } from "../services/trustScore.service.js";
 import {
   createTrade,
   deleteTrade,
@@ -142,6 +143,31 @@ export async function recordTradeController(
     input.recordId = randomUUID();
     const razorpayOrderId = String(body.razorpayOrderId ?? "").trim();
     razorpayPaymentId = String(body.razorpayPaymentId ?? "").trim();
+
+    // ----------------------------------------------------------
+    // AUTO-COMPUTE TRUST SCORE FOR TERMINAL STATUSES
+    // ----------------------------------------------------------
+    const normalizedStatus = input.tradeStatus.trim().toUpperCase();
+    const isTerminalStatus =
+      normalizedStatus === "COMPLETED" || normalizedStatus === "CANCELLED";
+
+    if (isTerminalStatus) {
+      input.trustScoreAfterTrade = await calculateTrustScore(
+        input.exporterId,
+        {
+          tradeStatus: input.tradeStatus,
+          inspectionStatus: input.inspectionStatus,
+          disputeStatus: input.disputeStatus,
+          expectedDelivery: input.expectedDelivery,
+          actualDelivery: input.actualDelivery,
+        },
+      );
+    } else {
+      // Intermediate statuses (INSPECTED, DISPUTED, CREATED)
+      // do not update the trust score.
+      input.trustScoreAfterTrade = 0;
+    }
+
     if (isDbPersistedTradeStatus(input.tradeStatus)) {
       await createTrade({
         id: input.recordId,
