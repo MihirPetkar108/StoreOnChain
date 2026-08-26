@@ -93,4 +93,9 @@ export interface RecordTradeRequest {
 
   trustScoreAfterTrade: number;
   recordId: string;
+
+  // Payment method fields
+  paymentMethod?: string;
+  cryptoTxHash?: string;
+  cryptoAsset?: "ETH" | "USDC";
 }

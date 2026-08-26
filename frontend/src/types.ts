@@ -66,6 +66,9 @@ export interface RecordTradePayload {
   invoiceFile?: File;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
+  paymentMethod?: "RAZORPAY" | "CRYPTO";
+  cryptoTxHash?: string;
+  cryptoAsset?: "ETH" | "USDC";
 }
 
 export interface TradesByStatusResponse {

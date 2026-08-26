@@ -16,6 +16,11 @@ import {
 } from "../services/escrow.service.js";
 
 import type { PaymentMethod } from "../types/escrow.types.js";
+import {
+  raiseDisputeCryptoPayment,
+  releaseCryptoPayment,
+  refundCryptoPayment,
+} from "../services/cryptoPayment.service.js";
 
 // ============================================================
 // CREATE ESCROW
@@ -356,6 +361,11 @@ export async function openDisputeController(
   try {
     const escrowId = String(req.params.escrowId);
 
+    const currentEscrow = await getEscrow(escrowId);
+    if (currentEscrow.paymentMethod === "CRYPTO") {
+      await raiseDisputeCryptoPayment({ tradeId: currentEscrow.tradeId });
+    }
+
     const escrow = await openDispute(escrowId);
 
     res.status(200).json({
@@ -380,6 +390,11 @@ export async function releaseEscrowController(
   try {
     const escrowId = String(req.params.escrowId);
 
+    const currentEscrow = await getEscrow(escrowId);
+    if (currentEscrow.paymentMethod === "CRYPTO") {
+      await releaseCryptoPayment({ tradeId: currentEscrow.tradeId });
+    }
+
     const escrow = await releaseEscrow(escrowId);
 
     res.status(200).json({
@@ -403,6 +418,11 @@ export async function refundEscrowController(
 ): Promise<void> {
   try {
     const escrowId = String(req.params.escrowId);
+
+    const currentEscrow = await getEscrow(escrowId);
+    if (currentEscrow.paymentMethod === "CRYPTO") {
+      await refundCryptoPayment({ tradeId: currentEscrow.tradeId });
+    }
 
     const escrow = await refundEscrow(escrowId);
 

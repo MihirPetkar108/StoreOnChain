@@ -1,5 +1,8 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
 import { ethers } from "ethers";
+
+dotenv.config({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
 
 const rpcUrl = process.env.BLOCKCHAIN_RPC_URL;
 const contractAddress = process.env.TRADE_LEDGER_CONTRACT_ADDRESS;

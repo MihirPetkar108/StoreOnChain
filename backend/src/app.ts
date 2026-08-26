@@ -1,5 +1,10 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
 import express from "express";
+
+// Resolve backend/.env from this file instead of relying on process.cwd().
+// This allows `npm --prefix backend run dev` and root-level launches to work.
+dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 import cors from "cors";
 
 import healthRoutes from "./routes/health.routes.js";
@@ -7,6 +12,7 @@ import tradeRoutes from "./routes/trade.routes.js";
 import invoiceRoutes from "./routes/invoice.routes.js";
 import escrowRoutes from "./routes/escrow.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
+import cryptoPaymentRoutes from "./routes/cryptoPayment.routes.js";
 
 const app = express();
 
@@ -18,6 +24,7 @@ app.use("/api", tradeRoutes);
 app.use("/api", invoiceRoutes);
 app.use("/api/escrows", escrowRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/crypto", cryptoPaymentRoutes);
 
 // Global Error Handler Middleware
 app.use(

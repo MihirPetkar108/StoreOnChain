@@ -27,6 +27,10 @@ import {
   settleEscrow,
 } from "../services/escrow.service.js";
 import {
+  releaseCryptoPayment,
+  refundCryptoPayment,
+} from "../services/cryptoPayment.service.js";
+import {
   createPayment,
   deletePayment,
   getLatestPaymentForTrades,
@@ -153,16 +157,13 @@ export async function recordTradeController(
       normalizedStatus === "COMPLETED" || normalizedStatus === "CANCELLED";
 
     if (isTerminalStatus) {
-      input.trustScoreAfterTrade = await calculateTrustScore(
-        input.exporterId,
-        {
-          tradeStatus: input.tradeStatus,
-          inspectionStatus: input.inspectionStatus,
-          disputeStatus: input.disputeStatus,
-          expectedDelivery: input.expectedDelivery,
-          actualDelivery: input.actualDelivery,
-        },
-      );
+      input.trustScoreAfterTrade = await calculateTrustScore(input.exporterId, {
+        tradeStatus: input.tradeStatus,
+        inspectionStatus: input.inspectionStatus,
+        disputeStatus: input.disputeStatus,
+        expectedDelivery: input.expectedDelivery,
+        actualDelivery: input.actualDelivery,
+      });
     } else {
       // Intermediate statuses (INSPECTED, DISPUTED, CREATED)
       // do not update the trust score.
@@ -206,6 +207,47 @@ export async function recordTradeController(
       await fundEscrow(escrow.id);
     }
 
+    // Handle crypto payment method
+    const paymentMethod = String(
+      input.paymentMethod || body.paymentMethod || body.payment_method || "",
+    )
+      .trim()
+      .toUpperCase();
+    const cryptoTxHash = (input.cryptoTxHash ||
+      body.cryptoTxHash ||
+      body.crypto_tx_hash ||
+      "") as string;
+    const cryptoAsset = String(
+      input.cryptoAsset || body.cryptoAsset || body.crypto_asset || "USDC",
+    ).trim().toUpperCase();
+
+    if (paymentMethod === "CRYPTO") {
+      if (cryptoAsset !== "ETH" && cryptoAsset !== "USDC") {
+        throw new Error("Unsupported crypto asset");
+      }
+      const escrow = await createEscrow(
+        input.recordId,
+        String(input.totalAmount),
+        input.currency,
+        "CRYPTO",
+      );
+      escrowId = escrow.id;
+      const payment = await createPayment({
+        escrow_id: escrow.id,
+        trade_id: input.recordId,
+        amount: Number(input.totalAmount),
+        currency: input.currency,
+        method: "CRYPTO",
+        status: "PENDING",
+        provider_order_id: cryptoTxHash || null,
+        provider_payment_id: cryptoTxHash || null,
+        crypto_asset: cryptoAsset as "ETH" | "USDC",
+        crypto_network: "ETHEREUM_SEPOLIA",
+      });
+      paymentId = payment.id;
+      await markAwaitingPayment(escrow.id);
+    }
+
     const result = await recordTrade(input);
 
     if (originalTrade) {
@@ -216,12 +258,19 @@ export async function recordTradeController(
         history.map((trade) => trade.recordId),
       );
       if (payment && normalizedSettlementStatus === "REFUNDED") {
-        await refundRazorpayPayment(
-          payment.provider_payment_id,
-          Math.round(Number(payment.amount) * 100),
-        );
+        if (payment.method === "CRYPTO") {
+          await refundCryptoPayment({ tradeId: payment.trade_id });
+        } else {
+          await refundRazorpayPayment(
+            payment.provider_payment_id,
+            Math.round(Number(payment.amount) * 100),
+          );
+        }
         await settleEscrow(payment.escrow_id, "REFUNDED");
       } else if (payment && normalizedSettlementStatus === "SETTLED") {
+        if (payment.method === "CRYPTO") {
+          await releaseCryptoPayment({ tradeId: payment.trade_id });
+        }
         await settleEscrow(payment.escrow_id, "RELEASED");
       }
     }

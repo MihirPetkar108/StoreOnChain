@@ -55,3 +55,23 @@ After setting the variable, you can run the deployment with the Sepolia network:
 ```shell
 npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
 ```
+
+## GLOBEX crypto payments (local demo)
+
+`CryptoEscrow.sol` holds native ETH or configured Sepolia USDC until the backend settles the trade. The payer signs the ETH deposit, or the USDC approval and deposit, in MetaMask.
+
+For the real demo, deploy the escrow to Sepolia using the configured Hardhat
+Sepolia account:
+
+```shell
+npx hardhat ignition deploy --network sepolia ignition/modules/CryptoEscrow.ts
+```
+
+Copy the deployed address into `CRYPTO_ESCROW_CONTRACT_ADDRESS` and configure
+the official Sepolia USDC address as `CRYPTO_USDC_CONTRACT_ADDRESS`. Set
+`CRYPTO_PAYEE_ADDRESS` to the exporter wallet. The backend signer must own the
+escrow contract and have Sepolia ETH for settlement transactions.
+
+The frontend reads `VITE_BLOCKCHAIN_CHAIN_ID` for the MetaMask network check.
+Users must hold Sepolia ETH and/or Sepolia USDC before paying; no proprietary
+GLOBEX token or faucet is used.

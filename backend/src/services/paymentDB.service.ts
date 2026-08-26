@@ -12,6 +12,22 @@ export interface CreatePaymentData {
   status: PaymentStatus;
   provider_order_id?: string | null;
   provider_payment_id?: string | null;
+  crypto_asset?: "ETH" | "USDC" | null;
+  crypto_network?: string | null;
+  crypto_amount?: string | null;
+}
+
+export interface CryptoPaymentDetails {
+  wallet_address?: string | null;
+  crypto_asset?: "ETH" | "USDC" | null;
+  crypto_network?: string | null;
+  crypto_amount?: string | null;
+  chain_id?: string | null;
+  token_address?: string | null;
+  escrow_contract_address?: string | null;
+  deposit_tx_hash?: string | null;
+  release_tx_hash?: string | null;
+  refund_tx_hash?: string | null;
 }
 
 const inboundPaymentStatuses: PaymentStatus[] = [
@@ -130,6 +146,76 @@ export async function recordEscrowSettlementPayment(input: {
     provider_order_id: settlementOrderId(input.kind, input.escrowId),
     provider_payment_id: input.providerPaymentId ?? null,
   });
+}
+
+export async function getPaymentByTradeIdAndMethod(
+  tradeId: string,
+  method: PaymentMethod,
+) {
+  const { data: payments, error } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("trade_id", tradeId)
+    .eq("method", method)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`Failed to find payment: ${error.message}`);
+
+  return (
+    payments?.find(
+      (payment) => !isSettlementOrderId(payment.provider_order_id),
+    ) ?? null
+  );
+}
+
+// ============================================================
+// CRYPTO PAYMENT CONFIRMATION / SETTLEMENT UPDATES
+// ============================================================
+
+export async function markCryptoPaymentConfirmed(
+  paymentId: string,
+  details: CryptoPaymentDetails,
+) {
+  const { data, error } = await supabase
+    .from("payments")
+    .update({
+      status: "SUCCESS",
+      provider_order_id: details.deposit_tx_hash ?? null,
+      provider_payment_id: details.deposit_tx_hash ?? null,
+      wallet_address: details.wallet_address ?? null,
+      chain_id: details.chain_id ?? null,
+      token_address: details.token_address ?? null,
+      escrow_contract_address: details.escrow_contract_address ?? null,
+      deposit_tx_hash: details.deposit_tx_hash ?? null,
+      crypto_asset: details.crypto_asset ?? null,
+      crypto_network: details.crypto_network ?? null,
+      crypto_amount: details.crypto_amount ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", paymentId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update crypto payment: ${error.message}`);
+  }
+  return data;
+}
+
+export async function storeCryptoSettlementHash(
+  paymentId: string,
+  kind: "release" | "refund",
+  txHash: string | null,
+): Promise<void> {
+  const column = kind === "release" ? "release_tx_hash" : "refund_tx_hash";
+  const { error } = await supabase
+    .from("payments")
+    .update({ [column]: txHash, updated_at: new Date().toISOString() })
+    .eq("id", paymentId);
+
+  if (error) {
+    throw new Error(`Failed to store crypto ${kind} hash: ${error.message}`);
+  }
 }
 
 export async function getLatestPaymentForTrades(tradeIds: string[]) {

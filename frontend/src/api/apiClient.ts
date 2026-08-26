@@ -144,6 +144,15 @@ export const api = {
     if (payload.razorpayPaymentId) {
       formData.append("razorpayPaymentId", payload.razorpayPaymentId);
     }
+    if (payload.paymentMethod) {
+      formData.append("paymentMethod", payload.paymentMethod);
+    }
+    if (payload.cryptoTxHash) {
+      formData.append("cryptoTxHash", payload.cryptoTxHash);
+    }
+    if (payload.cryptoAsset) {
+      formData.append("cryptoAsset", payload.cryptoAsset);
+    }
     if (payload.transactionId) {
       formData.append("transactionId", payload.transactionId);
     }
