@@ -62,7 +62,7 @@ export interface RecordTradePayload {
   settlementStatus: string;
   expectedDelivery: string;
   actualDelivery: string;
-  trustScoreAfterTrade: number;
+  trustScoreAfterTrade?: number;
   invoiceFile?: File;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;

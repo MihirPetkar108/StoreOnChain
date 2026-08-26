@@ -23,7 +23,7 @@ export const RecordTradeView: React.FC = () => {
   const [settlementStatus, setSettlementStatus] = useState("PENDING");
   const [expectedDelivery, setExpectedDelivery] = useState("2026-09-15");
   const [actualDelivery, setActualDelivery] = useState("2026-09-14");
-  const [trustScoreAfterTrade, setTrustScoreAfterTrade] = useState<number>(95);
+
 
   const normalizedTradeStatus = tradeStatus.trim().toUpperCase();
   const showInspectionStatus = normalizedTradeStatus === "INSPECTED";
@@ -80,7 +80,7 @@ export const RecordTradeView: React.FC = () => {
         settlementStatus: showSettlementDetails ? settlementStatus : "PENDING",
         expectedDelivery: showSettlementDetails ? expectedDelivery : "",
         actualDelivery: showSettlementDetails ? actualDelivery : "",
-        trustScoreAfterTrade: showSettlementDetails ? trustScoreAfterTrade : 0,
+        trustScoreAfterTrade: 0,
       });
 
       if (res.success) {
@@ -102,7 +102,7 @@ export const RecordTradeView: React.FC = () => {
             settlementStatus,
             expectedDelivery,
             actualDelivery,
-            trustScoreAfterTrade: trustScoreAfterTrade.toString(),
+            trustScoreAfterTrade: "0",
             invoiceHash: res.data?.invoiceHash || "",
             timestamp: Math.floor(Date.now() / 1000).toString(),
             ...res.data,
@@ -258,24 +258,6 @@ export const RecordTradeView: React.FC = () => {
             </div>
           )}
 
-          {showSettlementDetails && (
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">
-                Trust Score After Trade (0-100)
-              </label>
-              <input
-                type="number"
-                required
-                min="0"
-                max="100"
-                value={trustScoreAfterTrade}
-                onChange={(e) =>
-                  setTrustScoreAfterTrade(Number(e.target.value))
-                }
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          )}
         </div>
         {/* Form Action */}
         <div className="pt-4 border-t border-slate-800 flex items-center justify-end">

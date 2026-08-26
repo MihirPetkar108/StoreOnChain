@@ -159,10 +159,7 @@ export const api = {
     formData.append("settlementStatus", payload.settlementStatus);
     formData.append("expectedDelivery", payload.expectedDelivery);
     formData.append("actualDelivery", payload.actualDelivery);
-    formData.append(
-      "trustScoreAfterTrade",
-      payload.trustScoreAfterTrade.toString(),
-    );
+
 
     return sendRequest("POST", `${BASE_URL}/api/trades`, formData);
   },
