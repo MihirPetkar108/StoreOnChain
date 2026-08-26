@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 export const ExporterReputationView: React.FC = () => {
-  const [exporterId, setExporterId] = useState("EXP-9001");
+  const [exporterId, setExporterId] = useState("");
   const [reputation, setReputation] = useState<ExporterReputation | null>(null);
   const [exporterTradeIds, setExporterTradeIds] = useState<string[]>([]);
   const [totalTrades, setTotalTrades] = useState<number>(0);
@@ -108,7 +108,7 @@ export const ExporterReputationView: React.FC = () => {
               <input
                 type="text"
                 required
-                placeholder="Enter Exporter ID (e.g. EXP-9001)"
+                placeholder="EXP-9001"
                 value={exporterId}
                 onChange={(e) => setExporterId(e.target.value)}
                 className="bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-100 focus:outline-none focus:border-pink-500 w-56"

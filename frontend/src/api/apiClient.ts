@@ -1,6 +1,5 @@
 import type {
   Trade,
-  ProcessInvoiceResponse,
   VerifyInvoiceResponse,
   RecordTradePayload,
   TradesByStatusResponse,
@@ -104,18 +103,7 @@ export const api = {
     }
   },
 
-  // POST /api/invoice/process
-  async processInvoice(file: File): Promise<ProcessInvoiceResponse> {
-    const formData = new FormData();
-    formData.append("invoice", file);
-    return sendRequest<ProcessInvoiceResponse>(
-      "POST",
-      `${BASE_URL}/api/invoice/process`,
-      formData,
-    );
-  },
-
-  // GET /api/invoice/verify
+  // POST /api/invoice/verify
   async verifyInvoice(
     file: File,
     transactionId: string,
@@ -124,7 +112,7 @@ export const api = {
     formData.append("verify", file);
     formData.append("transactionId", transactionId);
     return sendRequest<VerifyInvoiceResponse>(
-      "GET",
+      "POST",
       `${BASE_URL}/api/invoice/verify`,
       formData,
     );
@@ -135,7 +123,7 @@ export const api = {
     return sendRequest<Blob>(
       "GET",
       `${BASE_URL}/api/invoice/document?transactionId=${encodeURIComponent(transactionId)}`,
-      { transactionId },
+      undefined,
       "blob",
     );
   },

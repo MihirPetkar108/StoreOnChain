@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { api } from "../api/apiClient";
 import type { Trade } from "../types";
 import {
@@ -18,6 +18,59 @@ function formatBlockchainAmount(amount: string): string {
   const whole = value / 100n;
   const cents = (value % 100n).toString().padStart(2, "0");
   return `${whole}.${cents}`;
+}
+
+function formatTimestampToIST(timestamp: string): string {
+  const value = Number(timestamp);
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return "Not recorded";
+  }
+
+  const milliseconds = value > 9_999_999_999 ? value : value * 1000;
+
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+    timeZoneName: "short",
+  }).format(new Date(milliseconds));
+}
+
+function hasActiveDisputeStatus(status: string): boolean {
+  const normalized = status.trim().toUpperCase();
+  return normalized.length > 0 && normalized !== "NONE";
+}
+
+function getDisplayedDisputeStatus(
+  selectedTrade: Trade,
+  lifecycleTrades: Trade[],
+): string {
+  if (hasActiveDisputeStatus(selectedTrade.disputeStatus)) {
+    return selectedTrade.disputeStatus;
+  }
+
+  const selectedIndex = lifecycleTrades.findIndex(
+    (trade) => trade.recordId === selectedTrade.recordId,
+  );
+  const previousTrades =
+    selectedIndex >= 0
+      ? lifecycleTrades.slice(0, selectedIndex)
+      : lifecycleTrades;
+
+  for (let index = previousTrades.length - 1; index >= 0; index -= 1) {
+    const disputeStatus = previousTrades[index].disputeStatus;
+    if (hasActiveDisputeStatus(disputeStatus)) {
+      return disputeStatus;
+    }
+  }
+
+  return selectedTrade.disputeStatus;
 }
 
 export const TradeLedgerView: React.FC = () => {
@@ -51,6 +104,11 @@ export const TradeLedgerView: React.FC = () => {
     "COMPLETED",
     "CANCELLED",
   ];
+
+  const displayedDisputeStatus = useMemo(() => {
+    if (!selectedTrade) return "";
+    return getDisplayedDisputeStatus(selectedTrade, selectedTrades);
+  }, [selectedTrade, selectedTrades]);
 
   const fetchTradesByStatus = async (status: string) => {
     setLoading(true);
@@ -105,6 +163,7 @@ export const TradeLedgerView: React.FC = () => {
       case "PASSED":
         return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
       case "DISPUTED":
+      case "RAISED":
       case "FAILED":
       case "CANCELLED":
         return "bg-rose-500/10 text-rose-400 border-rose-500/30";
@@ -276,9 +335,9 @@ export const TradeLedgerView: React.FC = () => {
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-500 block">Dispute Status</span>
               <span
-                className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(selectedTrade.disputeStatus)}`}
+                className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadge(displayedDisputeStatus)}`}
               >
-                {selectedTrade.disputeStatus}
+                {displayedDisputeStatus}
               </span>
             </div>
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
@@ -292,13 +351,13 @@ export const TradeLedgerView: React.FC = () => {
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-500 block">Expected Delivery</span>
               <span className="font-semibold text-slate-200">
-                {selectedTrade.expectedDelivery}
+                {formatTimestampToIST(selectedTrade.expectedDelivery)}
               </span>
             </div>
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-500 block">Actual Delivery</span>
               <span className="font-semibold text-slate-200">
-                {selectedTrade.actualDelivery}
+                {formatTimestampToIST(selectedTrade.actualDelivery)}
               </span>
             </div>
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
@@ -310,7 +369,7 @@ export const TradeLedgerView: React.FC = () => {
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-500 block">Timestamp</span>
               <span className="font-semibold text-slate-200">
-                {selectedTrade.timestamp}
+                {formatTimestampToIST(selectedTrade.timestamp)}
               </span>
             </div>
           </div>
@@ -336,7 +395,8 @@ export const TradeLedgerView: React.FC = () => {
                   {trade.settlementStatus}
                 </span>
                 <span className="text-slate-400">
-                  Delivery: {trade.expectedDelivery} / {trade.actualDelivery}
+                  Delivery: {formatTimestampToIST(trade.expectedDelivery)} /{" "}
+                  {formatTimestampToIST(trade.actualDelivery)}
                 </span>
               </div>
             ))}

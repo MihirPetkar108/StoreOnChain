@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  FileCheck,
   FileSearch,
   Download,
   PlusCircle,
@@ -33,18 +32,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       color: "from-indigo-500 to-blue-600",
     },
     {
-      title: "Invoice Hash Processing",
-      desc: "Extract and generate cryptographic SHA-256 hashes for raw invoice files.",
-      icon: FileCheck,
-      endpoint: "POST /api/invoice/process",
-      tab: "invoice",
-      color: "from-cyan-500 to-teal-600",
-    },
-    {
       title: "Invoice Authenticity Verification",
       desc: "Verify uploaded invoices against stored blockchain hashes to prevent fraud.",
       icon: FileSearch,
-      endpoint: "GET /api/invoice/verify",
+      endpoint: "POST /api/invoice/verify",
       tab: "invoice",
       color: "from-emerald-500 to-green-600",
     },

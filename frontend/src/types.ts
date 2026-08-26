@@ -32,12 +32,6 @@ export interface ExporterReputation {
   totalTrades: string;
 }
 
-export interface ProcessInvoiceResponse {
-  success: boolean;
-  invoiceHash?: string;
-  message?: string;
-}
-
 export interface MarketplaceListing {
   id: string;
   product: string;
