@@ -13,6 +13,13 @@ import {
   RotateCw,
 } from "lucide-react";
 
+function formatBlockchainAmount(amount: string): string {
+  const value = BigInt(amount);
+  const whole = value / 100n;
+  const cents = (value % 100n).toString().padStart(2, "0");
+  return `${whole}.${cents}`;
+}
+
 export const TradeLedgerView: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -240,7 +247,8 @@ export const TradeLedgerView: React.FC = () => {
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-500 block">Total Amount</span>
               <span className="font-semibold text-slate-200">
-                {selectedTrade.currency} {selectedTrade.totalAmount}
+                {selectedTrade.currency}{" "}
+                {formatBlockchainAmount(selectedTrade.totalAmount)}
               </span>
             </div>
             <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
@@ -519,7 +527,7 @@ export const TradeLedgerView: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-slate-300">
-                      {t.currency} {t.totalAmount}
+                      {t.currency} {formatBlockchainAmount(t.totalAmount)}
                     </td>
                   </tr>
                 ))}

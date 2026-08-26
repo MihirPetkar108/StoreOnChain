@@ -29,12 +29,20 @@ interface RazorpayOptions {
 
 interface RazorpayInstance {
   open: () => void;
+  on: (
+    event: string,
+    handler: (response: RazorpayFailureResponse) => void,
+  ) => void;
 }
 
 interface RazorpayPaymentResponse {
   razorpay_order_id: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
+}
+
+interface RazorpayFailureResponse {
+  error?: { description?: string };
 }
 
 interface PurchaseViewProps {
@@ -50,6 +58,9 @@ export const PurchaseView: React.FC<PurchaseViewProps> = ({ listingId }) => {
   const [importerId, setImporterId] = useState("");
   const [purchaseDocument, setPurchaseDocument] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [processingStage, setProcessingStage] = useState<
+    "payment" | "blockchain" | null
+  >(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,6 +121,7 @@ export const PurchaseView: React.FC<PurchaseViewProps> = ({ listingId }) => {
     }
 
     setProcessing(true);
+    setProcessingStage("payment");
     try {
       const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
       if (!razorpayKey) {
@@ -143,6 +155,7 @@ export const PurchaseView: React.FC<PurchaseViewProps> = ({ listingId }) => {
               });
               if (!verification.verified) throw new Error(verification.message);
 
+              setProcessingStage("blockchain");
               const trade = await api.recordTrade({
                 transactionId: crypto.randomUUID(),
                 listingId: listing!.id,
@@ -178,12 +191,21 @@ export const PurchaseView: React.FC<PurchaseViewProps> = ({ listingId }) => {
             ondismiss: () => reject(new Error("Payment was cancelled.")),
           },
         });
+        checkout.on("payment.failed", (failure) => {
+          reject(
+            new Error(
+              failure.error?.description ||
+                "Payment failed. No blockchain transaction was created.",
+            ),
+          );
+        });
         checkout.open();
       });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Purchase failed.");
     } finally {
       setProcessing(false);
+      setProcessingStage(null);
     }
   };
 
@@ -283,7 +305,11 @@ export const PurchaseView: React.FC<PurchaseViewProps> = ({ listingId }) => {
               disabled={processing}
               className="w-full py-3 rounded-lg bg-cyan-500 text-slate-950 font-bold disabled:opacity-50"
             >
-              {processing ? "Processing payment..." : "Pay with Razorpay"}
+              {processingStage === "blockchain"
+                ? "Recording on blockchain..."
+                : processingStage === "payment"
+                  ? "Processing payment..."
+                  : "Pay with Razorpay"}
             </button>
           </form>
         )}
